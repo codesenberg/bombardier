@@ -1,11 +1,9 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -21,20 +19,15 @@ const (
 )
 
 type bombardier struct {
-	numReqs        int
-	numConns       int
-	url            string
+	conf           config
 	requestHeaders *fasthttp.RequestHeader
-	timeout        time.Duration
-
-	reqsDone uint64
+	barrier        completionBarrier
 
 	bytesWritten int64
 	timeTaken    time.Duration
 	latencies    *stats
 	requests     *stats
 
-	jobs   sync.WaitGroup
 	client *fasthttp.Client
 	done   chan bool
 
@@ -55,56 +48,50 @@ type bombardier struct {
 	bar *pb.ProgressBar
 }
 
-func newBombardier(numConns, numReqs int, url string, headers *headersList, timeout time.Duration) (*bombardier, error) {
-	b := new(bombardier)
-	b.numReqs = numReqs
-	b.numConns = numConns
-	b.url = url
-	b.timeout = timeout
-	if err := b.checkArgs(); err != nil {
+func newBombardier(c config) (*bombardier, error) {
+	if err := c.checkArgs(); err != nil {
 		return nil, err
 	}
-	b.latencies = newStats(b.timeout.Nanoseconds() / 1000)
+	b := new(bombardier)
+	b.conf = c
+	b.latencies = newStats(c.timeoutMillis())
 	b.requests = newStats(maxRps)
-	b.jobs.Add(b.numReqs)
+	if b.conf.testType == counted {
+		b.bar = pb.New64(int64(*b.conf.numReqs))
+		b.barrier = newCountingCompletionBarrier(*c.numReqs, func() {
+			b.bar.Increment()
+		})
+	} else if b.conf.testType == timed {
+		b.bar = pb.New(int(b.conf.duration.Seconds()))
+		b.bar.ShowCounters = false
+		b.bar.ShowPercent = false
+		b.barrier = newTimedCompletionBarrier(int(c.numConns), *c.duration, func() {
+			b.bar.Increment()
+		})
+	}
 	b.client = &fasthttp.Client{
-		MaxConnsPerHost: b.numConns,
+		MaxConnsPerHost: int(c.numConns),
 	}
 	b.done = make(chan bool)
-	b.requestHeaders = headers.toRequestHeader()
+	b.requestHeaders = c.requestHeaders()
 	return b, nil
 }
 
-func (b *bombardier) checkArgs() error {
-	if b.numReqs < 1 {
-		return errors.New("Invalid number of requests(must be > 0)")
-	}
-	if b.numConns < 1 {
-		return errors.New("Invalid number of connections(must be > 0)")
-	}
-	if b.timeout < 0 {
-		return errors.New("Timeout can't be negative")
-	}
-	if b.timeout > 10*time.Second {
-		return errors.New("Timeout is too big(more that 10s)")
-	}
-	return nil
-}
-
-func (b *bombardier) prepareRequest(headers *fasthttp.RequestHeader) (*fasthttp.Request, *fasthttp.Response) {
+func (b *bombardier) prepareRequest() (*fasthttp.Request, *fasthttp.Response) {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
-	if headers != nil {
-		headers.CopyTo(&req.Header)
+	if b.requestHeaders != nil {
+		b.requestHeaders.CopyTo(&req.Header)
 	}
-	req.Header.SetMethod("GET")
-	req.SetRequestURI(b.url)
+	req.Header.SetMethod(b.conf.method)
+	req.SetRequestURI(b.conf.url)
+	req.SetBodyString(b.conf.body)
 	return req, resp
 }
 
 func (b *bombardier) fireRequest(req *fasthttp.Request, resp *fasthttp.Response) (bytesWritten int64, code int, msTaken uint64) {
 	start := time.Now()
-	err := b.client.DoTimeout(req, resp, b.timeout)
+	err := b.client.DoTimeout(req, resp, b.conf.timeout)
 	if err != nil {
 		code = 0
 	} else {
@@ -146,23 +133,13 @@ func (b *bombardier) writeStatistics(bytesWritten int64, code int, msTaken uint6
 	atomic.AddUint64(counter, 1)
 }
 
-func (b *bombardier) grabWork() bool {
-	reqID := atomic.AddUint64(&b.reqsDone, 1)
-	return reqID <= uint64(b.numReqs)
-}
-
-func (b *bombardier) reportDone() {
-	b.bar.Increment()
-	b.jobs.Done()
-}
-
-func (b *bombardier) Worker(headers *fasthttp.RequestHeader) {
-	for b.grabWork() {
-		req, resp := b.prepareRequest(headers)
+func (b *bombardier) Worker() {
+	for b.barrier.grabWork() {
+		req, resp := b.prepareRequest()
 		bytesWritten, code, msTaken := b.fireRequest(req, resp)
 		b.releaseRequest(req, resp)
 		b.writeStatistics(bytesWritten, code, msTaken)
-		b.reportDone()
+		b.barrier.jobDone()
 	}
 }
 
@@ -192,29 +169,33 @@ func (b *bombardier) recordRps() {
 }
 
 func (b *bombardier) bombard() {
-	fmt.Printf("Bombarding %v with %v requests using %v connections\n",
-		b.url, b.numReqs, b.numConns)
-	b.bar = pb.StartNew(b.numReqs)
+	b.printIntro()
+	b.bar.Start()
 	bombardmentBegin := time.Now()
 	b.start = time.Now()
-	for i := 0; i < b.numConns; i++ {
-		var headers *fasthttp.RequestHeader
-		if b.requestHeaders != nil {
-			headers = new(fasthttp.RequestHeader)
-			b.requestHeaders.CopyTo(headers)
-		}
-		go b.Worker(headers)
+	for i := uint64(0); i < b.conf.numConns; i++ {
+		go b.Worker()
 	}
 	go b.rateMeter()
-	b.jobs.Wait()
+	b.barrier.wait()
 	b.timeTaken = time.Since(bombardmentBegin)
 	b.done <- true
 	<-b.done
-	b.bar.Finish()
+	b.bar.FinishPrint("Done!")
 }
 
 func (b *bombardier) throughput() float64 {
 	return float64(b.bytesWritten) / b.timeTaken.Seconds()
+}
+
+func (b *bombardier) printIntro() {
+	if b.conf.testType == counted {
+		fmt.Printf("Bombarding %v with %v requests using %v connections\n",
+			b.conf.url, *b.conf.numReqs, b.conf.numConns)
+	} else if b.conf.testType == timed {
+		fmt.Printf("Bombarding %v for %v using %v connections\n",
+			b.conf.url, *b.conf.duration, b.conf.numConns)
+	}
 }
 
 func (b *bombardier) printLatencyStats() {
@@ -242,14 +223,21 @@ func (b *bombardier) printStats() {
 	fmt.Printf("  %-10v %10v/s\n", "Throughput:", formatBinary(b.throughput()))
 }
 
-var headers = new(headersList)
-var numConns = flag.Int("c", 200, "Maximum number of concurrent connections")
-var numReqs = flag.Int("n", 10000, "Number of requests")
-var timeout = flag.Duration("timeout", 2*time.Second, "Socket/request timeout")
-var latencies = flag.Bool("latencies", false, "Print latency statistics")
+var (
+	numReqs   = new(nullableUint64)
+	duration  = new(nullableDuration)
+	headers   = new(headersList)
+	numConns  = flag.Uint64("c", 200, "Maximum number of concurrent connections")
+	timeout   = flag.Duration("timeout", 2*time.Second, "Socket/request timeout")
+	latencies = flag.Bool("latencies", false, "Print latency statistics")
+	method    = flag.String("m", "GET", "Request method")
+	body      = flag.String("data", "", "Request body")
+)
 
 func main() {
 	flag.Var(headers, "H", "HTTP headers to use")
+	flag.Var(numReqs, "n", "Number of requests")
+	flag.Var(duration, "d", "Duration of test")
 	flag.Parse()
 	if flag.NArg() == 0 {
 		fmt.Println("No URL supplied")
@@ -260,20 +248,17 @@ func main() {
 		fmt.Println("Too many arguments are supplied")
 		os.Exit(1)
 	}
-	rawurl := flag.Args()[0]
-	url, err := url.ParseRequestURI(rawurl)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	if url.Host == "" || (url.Scheme != "http" && url.Scheme != "https") {
-		fmt.Println("No hostname or invalid scheme")
-		os.Exit(1)
-	}
 	bombardier, err := newBombardier(
-		*numConns, *numReqs,
-		url.String(), headers,
-		*timeout)
+		config{
+			numConns: *numConns,
+			numReqs:  numReqs.val,
+			duration: duration.val,
+			url:      flag.Arg(0),
+			headers:  headers,
+			timeout:  *timeout,
+			method:   *method,
+			body:     *body,
+		})
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
