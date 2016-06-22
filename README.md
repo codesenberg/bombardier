@@ -1,5 +1,5 @@
 # bombardier
-bombardier is a HTTP(S) benchmarking tool. Its written in Go programming language and uses excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance.
+bombardier is a HTTP(S) benchmarking tool. It is written in Go programming language and uses excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance.
 
 ##Installation
 You can grab the latest version in the [releases](https://github.com/codesenberg/bombardier/releases) section.
