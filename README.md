@@ -29,6 +29,10 @@ Also, you can supply these options:
   -timeout duration
         Socket/request timeout (default 2s)
 ```
+To set multiple headers just repeat the H flag, like so:
+```
+bombardier -H 'First: Value1' -H 'Second: Value2' -H 'Third: Value3' http://somehost:8080
+```
 You should see something like this if you done everything correctly:
 ```
 > bombardier -c 200 -n 10000000 http://localhost:8080
