@@ -35,7 +35,7 @@ func (h *headersList) toRequestHeader() *fasthttp.RequestHeader {
 	}
 	res := new(fasthttp.RequestHeader)
 	for _, header := range *h {
-		res.Add(header.key, header.value)
+		res.Set(header.key, header.value)
 	}
 	return res
 }

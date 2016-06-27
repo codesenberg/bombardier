@@ -45,11 +45,17 @@
 			"revisionTime": "2014-04-12T22:01:45Z"
 		},
 		{
+			"checksumSHA1": "9MD6b5Ie9PrN/2+ZzRII7Qoi7sc=",
+			"path": "github.com/tevino/abool",
+			"revision": "6662858d9357f2684573721476a9bb7d9cddeaae",
+			"revisionTime": "2016-06-02T03:48:02Z"
+		},
+		{
 			"checksumSHA1": "ndkG3bneR3bpYt+YmkXuhGrFKnM=",
 			"path": "github.com/valyala/fasthttp",
 			"revision": "12ba9899844060189449e9768dc0900a56d3624b",
 			"revisionTime": "2016-03-29T14:11:43Z"
 		}
 	],
-	"rootPath": "bugsenberg/bombardier"
+	"rootPath": "codesenberg/bombardier"
 }

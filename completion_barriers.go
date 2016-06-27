@@ -4,6 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/tevino/abool"
 )
 
 type completionBarrier interface {
@@ -42,31 +44,31 @@ func (c *countingCompletionBarrier) wait() {
 type timedCompletionBarrier struct {
 	wg           sync.WaitGroup
 	tickCallback func()
-	done         int64
+	done         *abool.AtomicBool
 }
 
 func newTimedCompletionBarrier(parties int, duration time.Duration, callback func()) completionBarrier {
 	c := new(timedCompletionBarrier)
 	c.tickCallback = callback
-	c.done = 0
+	c.done = abool.NewBool(false)
 	c.wg.Add(parties)
 	go func() {
-		secs := int(duration.Seconds())
-		for i := 1; i <= secs; i++ {
+		deadline := time.Now().Add(duration)
+		for time.Now().Before(deadline) {
 			c.tickCallback()
 			time.Sleep(1 * time.Second)
 		}
-		atomic.CompareAndSwapInt64(&c.done, 0, 1)
+		c.done.Set()
 	}()
 	return completionBarrier(c)
 }
 
 func (c *timedCompletionBarrier) grabWork() bool {
-	done := atomic.LoadInt64(&c.done)
-	if done == 1 {
+	done := c.done.IsSet()
+	if done {
 		c.wg.Done()
 	}
-	return done == 0
+	return !done
 }
 
 func (c *timedCompletionBarrier) jobDone() {
