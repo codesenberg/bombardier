@@ -17,9 +17,19 @@ const (
 )
 
 var (
-	defaultTestDuration = 10 * time.Second
-	httpMethods         = []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"}
-	cantHaveBody        = []string{"GET", "HEAD"}
+	defaultTestDuration  = 10 * time.Second
+	defaultNumberOfConns = uint64(200)
+	defaultNumberOfReqs  = uint64(10000)
+	httpMethods          = []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"}
+	cantHaveBody         = []string{"GET", "HEAD"}
+
+	errInvalidURL              = errors.New("No hostname or invalid scheme")
+	errInvalidNumberOfConns    = errors.New("Invalid number of connections(must be > 0)")
+	errInvalidNumberOfRequests = errors.New("Invalid number of requests(must be > 0)")
+	errInvalidTestDuration     = errors.New("Invalid test duration(must be >= 1s)")
+	errNegativeTimeout         = errors.New("Timeout can't be negative")
+	errLargeTimeout            = errors.New("Timeout is too big(more that 10s)")
+	errBodyNotAllowed          = errors.New("GET and HEAD requests cannot have body")
 )
 
 func init() {
@@ -35,6 +45,7 @@ type config struct {
 	headers           *headersList
 	timeout           time.Duration
 	testType          int
+	printLatencies    bool
 }
 
 func (c *config) checkArgs() error {
@@ -43,10 +54,10 @@ func (c *config) checkArgs() error {
 		return err
 	}
 	if url.Host == "" || (url.Scheme != "http" && url.Scheme != "https") {
-		return errors.New("No hostname or invalid scheme")
+		return errInvalidURL
 	}
 	if c.numConns < uint64(1) {
-		return errors.New("Invalid number of connections(must be > 0)")
+		return errInvalidNumberOfConns
 	}
 	testType := none
 	if c.numReqs != nil {
@@ -60,37 +71,37 @@ func (c *config) checkArgs() error {
 		c.duration = &defaultTestDuration
 	}
 	if c.testType == counted && *c.numReqs < uint64(1) {
-		return errors.New("Invalid number of requests(must be > 0)")
+		return errInvalidNumberOfRequests
 	}
 	if c.testType == timed && *c.duration < time.Second {
-		return errors.New("Invalid test duration(must be >= 1s)")
+		return errInvalidTestDuration
 	}
 	if c.timeout < 0 {
-		return errors.New("Timeout can't be negative")
+		return errNegativeTimeout
 	}
 	if c.timeout > 10*time.Second {
-		return errors.New("Timeout is too big(more that 10s)")
+		return errLargeTimeout
 	}
-	if allowedHttpMethod(c.method) {
-		return errors.New(fmt.Sprintf("Unknown HTTP method: %v", c.method))
+	if !allowedHTTPMethod(c.method) {
+		return fmt.Errorf("Unknown HTTP method: %v", c.method)
 	}
 	if !canHaveBody(c.method) && len(c.body) > 0 {
-		return errors.New("GET and HEAD requests cannot have body")
+		return errBodyNotAllowed
 	}
 	return nil
 }
 
-func (c *config) timeoutMillis() int64 {
-	return c.timeout.Nanoseconds() / 1000
+func (c *config) timeoutMillis() uint64 {
+	return uint64(c.timeout.Nanoseconds() / 1000)
 }
 
 func (c *config) requestHeaders() *fasthttp.RequestHeader {
 	return c.headers.toRequestHeader()
 }
 
-func allowedHttpMethod(method string) bool {
+func allowedHTTPMethod(method string) bool {
 	i := sort.SearchStrings(httpMethods, method)
-	return !(i < len(httpMethods) && httpMethods[i] == method)
+	return i < len(httpMethods) && httpMethods[i] == method
 }
 
 func canHaveBody(method string) bool {

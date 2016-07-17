@@ -19,7 +19,7 @@ func (h *headersList) String() string {
 }
 
 func (h *headersList) Set(value string) error {
-	res := strings.SplitN(value, ":", 2)
+	res := strings.Split(value, ":")
 	if len(res) != 2 {
 		return errors.New("invalid header format")
 	}

@@ -47,16 +47,16 @@ type timedCompletionBarrier struct {
 	done         *abool.AtomicBool
 }
 
-func newTimedCompletionBarrier(parties int, duration time.Duration, callback func()) completionBarrier {
+func newTimedCompletionBarrier(parties uint64, tickDuration, duration time.Duration, callback func()) completionBarrier {
 	c := new(timedCompletionBarrier)
 	c.tickCallback = callback
 	c.done = abool.NewBool(false)
-	c.wg.Add(parties)
+	c.wg.Add(int(parties))
 	go func() {
 		deadline := time.Now().Add(duration)
 		for time.Now().Before(deadline) {
 			c.tickCallback()
-			time.Sleep(1 * time.Second)
+			time.Sleep(tickDuration)
 		}
 		c.done.Set()
 	}()

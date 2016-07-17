@@ -34,7 +34,7 @@ func formatUnits(n float64, m *units, prec int) string {
 
 	scale := float64(m.scale) * 0.85
 
-	for i := 0; i+1 < len(m.units) && amt >= scale; i++ {
+	for i := 0; i < len(m.units) && amt >= scale; i++ {
 		amt /= float64(m.scale)
 		unit = m.units[i]
 	}

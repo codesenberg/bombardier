@@ -14,7 +14,7 @@ type stats struct {
 	data  []uint64
 }
 
-func newStats(max int64) *stats {
+func newStats(max uint64) *stats {
 	s := new(stats)
 	s.limit = uint64(max + 1)
 	s.min = math.MaxUint64
