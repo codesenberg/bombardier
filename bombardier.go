@@ -244,7 +244,7 @@ const (
 
 	programName = "bombardier"
 
-	EXIT_FAILURE = 1
+	exitFailure = 1
 )
 
 func main() {
@@ -252,12 +252,12 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 		parser.usage(os.Stdout)
-		os.Exit(EXIT_FAILURE)
+		os.Exit(exitFailure)
 	}
 	bombardier, err := newBombardier(config)
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(EXIT_FAILURE)
+		os.Exit(exitFailure)
 	}
 	bombardier.bombard()
 	bombardier.printStats()

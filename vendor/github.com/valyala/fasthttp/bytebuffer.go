@@ -1,11 +1,7 @@
 package fasthttp
 
 import (
-	"sync"
-)
-
-const (
-	defaultByteBufferSize = 128
+	"github.com/valyala/bytebufferpool"
 )
 
 // ByteBuffer provides byte buffer, which can be used with fasthttp API
@@ -15,22 +11,33 @@ const (
 // slice. See example code for details.
 //
 // Use AcquireByteBuffer for obtaining an empty byte buffer.
-type ByteBuffer struct {
-
-	// B is a byte buffer to use in append-like workloads.
-	// See example code for details.
-	B []byte
-}
+//
+// ByteBuffer is deprecated. Use github.com/valyala/bytebufferpool instead.
+type ByteBuffer bytebufferpool.ByteBuffer
 
 // Write implements io.Writer - it appends p to ByteBuffer.B
 func (b *ByteBuffer) Write(p []byte) (int, error) {
-	b.B = append(b.B, p...)
-	return len(p), nil
+	return bb(b).Write(p)
+}
+
+// WriteString appends s to ByteBuffer.B
+func (b *ByteBuffer) WriteString(s string) (int, error) {
+	return bb(b).WriteString(s)
+}
+
+// Set sets ByteBuffer.B to p
+func (b *ByteBuffer) Set(p []byte) {
+	bb(b).Set(p)
+}
+
+// SetString sets ByteBuffer.B to s
+func (b *ByteBuffer) SetString(s string) {
+	bb(b).SetString(s)
 }
 
 // Reset makes ByteBuffer.B empty.
 func (b *ByteBuffer) Reset() {
-	b.B = b.B[:0]
+	bb(b).Reset()
 }
 
 // AcquireByteBuffer returns an empty byte buffer from the pool.
@@ -39,13 +46,7 @@ func (b *ByteBuffer) Reset() {
 // This reduces the number of memory allocations required for byte buffer
 // management.
 func AcquireByteBuffer() *ByteBuffer {
-	v := byteBufferPool.Get()
-	if v == nil {
-		return &ByteBuffer{
-			B: make([]byte, 0, defaultByteBufferSize),
-		}
-	}
-	return v.(*ByteBuffer)
+	return (*ByteBuffer)(defaultByteBufferPool.Get())
 }
 
 // ReleaseByteBuffer returns byte buffer to the pool.
@@ -53,8 +54,11 @@ func AcquireByteBuffer() *ByteBuffer {
 // ByteBuffer.B mustn't be touched after returning it to the pool.
 // Otherwise data races occur.
 func ReleaseByteBuffer(b *ByteBuffer) {
-	b.B = b.B[:0]
-	byteBufferPool.Put(b)
+	defaultByteBufferPool.Put(bb(b))
 }
 
-var byteBufferPool sync.Pool
+func bb(b *ByteBuffer) *bytebufferpool.ByteBuffer {
+	return (*bytebufferpool.ByteBuffer)(b)
+}
+
+var defaultByteBufferPool bytebufferpool.Pool

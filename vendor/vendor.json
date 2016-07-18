@@ -51,10 +51,22 @@
 			"revisionTime": "2016-06-02T03:48:02Z"
 		},
 		{
-			"checksumSHA1": "ndkG3bneR3bpYt+YmkXuhGrFKnM=",
+			"checksumSHA1": "CwE3RS09k9xl33pJQBf0BaLHCBQ=",
+			"path": "github.com/valyala/bytebufferpool",
+			"revision": "8ebd0474e5a2f0a5c7a74ad2bf421a1d1a90264f",
+			"revisionTime": "2016-07-12T06:12:50Z"
+		},
+		{
+			"checksumSHA1": "vS1cORIwoBXqhDLZ5gZMtLicoBw=",
 			"path": "github.com/valyala/fasthttp",
-			"revision": "12ba9899844060189449e9768dc0900a56d3624b",
-			"revisionTime": "2016-03-29T14:11:43Z"
+			"revision": "881ac52b00ef21896de49a8aa185467c8a9ae49c",
+			"revisionTime": "2016-07-16T14:36:32Z"
+		},
+		{
+			"checksumSHA1": "ieh1CFo/3HC2jWcpnQTjwdPvoek=",
+			"path": "github.com/valyala/fasthttp/fasthttputil",
+			"revision": "881ac52b00ef21896de49a8aa185467c8a9ae49c",
+			"revisionTime": "2016-07-16T14:36:32Z"
 		}
 	],
 	"rootPath": "codesenberg/bombardier"

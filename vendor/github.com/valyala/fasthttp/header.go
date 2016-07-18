@@ -116,6 +116,9 @@ func (h *RequestHeader) SetByteRange(startPos, endPos int) {
 
 // StatusCode returns response status code.
 func (h *ResponseHeader) StatusCode() int {
+	if h.statusCode == 0 {
+		return StatusOK
+	}
 	return h.statusCode
 }
 
@@ -380,6 +383,9 @@ func (h *RequestHeader) MultipartFormBoundary() []byte {
 		if n = bytes.IndexByte(b, ';'); n >= 0 {
 			b = b[:n]
 		}
+		if len(b) > 1 && b[0] == '"' && b[len(b)-1] == '"' {
+			b = b[1 : len(b)-1]
+		}
 		return b
 	}
 	return nil
@@ -516,6 +522,11 @@ func (h *RequestHeader) IsHead() bool {
 		return false
 	}
 	return bytes.Equal(h.Method(), strHead)
+}
+
+// IsDelete returns true if request method is DELETE.
+func (h *RequestHeader) IsDelete() bool {
+	return bytes.Equal(h.Method(), strDelete)
 }
 
 // IsHTTP11 returns true if the request is HTTP/1.1.
@@ -836,7 +847,8 @@ func (h *RequestHeader) del(key []byte) {
 
 // Add adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use Set for setting a single header for the given key.
 func (h *ResponseHeader) Add(key, value string) {
 	k := getHeaderKeyBytes(&h.bufKV, key, h.disableNormalizing)
 	h.h = appendArg(h.h, b2s(k), value)
@@ -844,44 +856,55 @@ func (h *ResponseHeader) Add(key, value string) {
 
 // AddBytesK adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use SetBytesK for setting a single header for the given key.
 func (h *ResponseHeader) AddBytesK(key []byte, value string) {
 	h.Add(b2s(key), value)
 }
 
 // AddBytesV adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use SetBytesV for setting a single header for the given key.
 func (h *ResponseHeader) AddBytesV(key string, value []byte) {
 	h.Add(key, b2s(value))
 }
 
 // AddBytesKV adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use SetBytesKV for setting a single header for the given key.
 func (h *ResponseHeader) AddBytesKV(key, value []byte) {
 	h.Add(b2s(key), b2s(value))
 }
 
 // Set sets the given 'key: value' header.
+//
+// Use Add for setting multiple header values under the same key.
 func (h *ResponseHeader) Set(key, value string) {
 	initHeaderKV(&h.bufKV, key, value, h.disableNormalizing)
 	h.SetCanonical(h.bufKV.key, h.bufKV.value)
 }
 
 // SetBytesK sets the given 'key: value' header.
+//
+// Use AddBytesK for setting multiple header values under the same key.
 func (h *ResponseHeader) SetBytesK(key []byte, value string) {
 	h.bufKV.value = append(h.bufKV.value[:0], value...)
 	h.SetBytesKV(key, h.bufKV.value)
 }
 
 // SetBytesV sets the given 'key: value' header.
+//
+// Use AddBytesV for setting multiple header values under the same key.
 func (h *ResponseHeader) SetBytesV(key string, value []byte) {
 	k := getHeaderKeyBytes(&h.bufKV, key, h.disableNormalizing)
 	h.SetCanonical(k, value)
 }
 
 // SetBytesKV sets the given 'key: value' header.
+//
+// Use AddBytesKV for setting multiple header values under the same key.
 func (h *ResponseHeader) SetBytesKV(key, value []byte) {
 	h.bufKV.key = append(h.bufKV.key[:0], key...)
 	normalizeHeaderKey(h.bufKV.key, h.disableNormalizing)
@@ -929,26 +952,85 @@ func (h *ResponseHeader) SetCookie(cookie *Cookie) {
 
 // SetCookie sets 'key: value' cookies.
 func (h *RequestHeader) SetCookie(key, value string) {
-	h.bufKV.key = append(h.bufKV.key[:0], key...)
-	h.SetCookieBytesK(h.bufKV.key, value)
+	h.parseRawHeaders()
+	h.collectCookies()
+	h.cookies = setArg(h.cookies, key, value)
 }
 
 // SetCookieBytesK sets 'key: value' cookies.
 func (h *RequestHeader) SetCookieBytesK(key []byte, value string) {
-	h.bufKV.value = append(h.bufKV.value[:0], value...)
-	h.SetCookieBytesKV(key, h.bufKV.value)
+	h.SetCookie(b2s(key), value)
 }
 
 // SetCookieBytesKV sets 'key: value' cookies.
 func (h *RequestHeader) SetCookieBytesKV(key, value []byte) {
+	h.SetCookie(b2s(key), b2s(value))
+}
+
+// DelClientCookie instructs the client to remove the given cookie.
+//
+// Use DelCookie if you want just removing the cookie from response header.
+func (h *ResponseHeader) DelClientCookie(key string) {
+	h.DelCookie(key)
+
+	c := AcquireCookie()
+	c.SetKey(key)
+	c.SetExpire(CookieExpireDelete)
+	h.SetCookie(c)
+	ReleaseCookie(c)
+}
+
+// DelClientCookieBytes instructs the client to remove the given cookie.
+//
+// Use DelCookieBytes if you want just removing the cookie from response header.
+func (h *ResponseHeader) DelClientCookieBytes(key []byte) {
+	h.DelClientCookie(b2s(key))
+}
+
+// DelCookie removes cookie under the given key from response header.
+//
+// Note that DelCookie doesn't remove the cookie from the client.
+// Use DelClientCookie instead.
+func (h *ResponseHeader) DelCookie(key string) {
+	h.cookies = delAllArgs(h.cookies, key)
+}
+
+// DelCookieBytes removes cookie under the given key from response header.
+//
+// Note that DelCookieBytes doesn't remove the cookie from the client.
+// Use DelClientCookieBytes instead.
+func (h *ResponseHeader) DelCookieBytes(key []byte) {
+	h.DelCookie(b2s(key))
+}
+
+// DelCookie removes cookie under the given key.
+func (h *RequestHeader) DelCookie(key string) {
 	h.parseRawHeaders()
 	h.collectCookies()
-	h.cookies = setArgBytes(h.cookies, key, value)
+	h.cookies = delAllArgs(h.cookies, key)
+}
+
+// DelCookieBytes removes cookie under the given key.
+func (h *RequestHeader) DelCookieBytes(key []byte) {
+	h.DelCookie(b2s(key))
+}
+
+// DelAllCookies removes all the cookies from response headers.
+func (h *ResponseHeader) DelAllCookies() {
+	h.cookies = h.cookies[:0]
+}
+
+// DelAllCookies removes all the cookies from request headers.
+func (h *RequestHeader) DelAllCookies() {
+	h.parseRawHeaders()
+	h.collectCookies()
+	h.cookies = h.cookies[:0]
 }
 
 // Add adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use Set for setting a single header for the given key.
 func (h *RequestHeader) Add(key, value string) {
 	k := getHeaderKeyBytes(&h.bufKV, key, h.disableNormalizing)
 	h.h = appendArg(h.h, b2s(k), value)
@@ -956,44 +1038,55 @@ func (h *RequestHeader) Add(key, value string) {
 
 // AddBytesK adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use SetBytesK for setting a single header for the given key.
 func (h *RequestHeader) AddBytesK(key []byte, value string) {
 	h.Add(b2s(key), value)
 }
 
 // AddBytesV adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use SetBytesV for setting a single header for the given key.
 func (h *RequestHeader) AddBytesV(key string, value []byte) {
 	h.Add(key, b2s(value))
 }
 
 // AddBytesKV adds the given 'key: value' header.
 //
-// Multiple headers with the same key may be added.
+// Multiple headers with the same key may be added with this function.
+// Use SetBytesKV for setting a single header for the given key.
 func (h *RequestHeader) AddBytesKV(key, value []byte) {
 	h.Add(b2s(key), b2s(value))
 }
 
 // Set sets the given 'key: value' header.
+//
+// Use Add for setting multiple header values under the same key.
 func (h *RequestHeader) Set(key, value string) {
 	initHeaderKV(&h.bufKV, key, value, h.disableNormalizing)
 	h.SetCanonical(h.bufKV.key, h.bufKV.value)
 }
 
 // SetBytesK sets the given 'key: value' header.
+//
+// Use AddBytesK for setting multiple header values under the same key.
 func (h *RequestHeader) SetBytesK(key []byte, value string) {
 	h.bufKV.value = append(h.bufKV.value[:0], value...)
 	h.SetBytesKV(key, h.bufKV.value)
 }
 
 // SetBytesV sets the given 'key: value' header.
+//
+// Use AddBytesV for setting multiple header values under the same key.
 func (h *RequestHeader) SetBytesV(key string, value []byte) {
 	k := getHeaderKeyBytes(&h.bufKV, key, h.disableNormalizing)
 	h.SetCanonical(k, value)
 }
 
 // SetBytesKV sets the given 'key: value' header.
+//
+// Use AddBytesKV for setting multiple header values under the same key.
 func (h *RequestHeader) SetBytesKV(key, value []byte) {
 	h.bufKV.key = append(h.bufKV.key[:0], key...)
 	normalizeHeaderKey(h.bufKV.key, h.disableNormalizing)
@@ -1321,9 +1414,6 @@ func (h *ResponseHeader) String() string {
 func (h *ResponseHeader) AppendBytes(dst []byte) []byte {
 	statusCode := h.StatusCode()
 	if statusCode < 0 {
-		statusCode = StatusOK
-	}
-	if statusCode == 0 {
 		statusCode = StatusOK
 	}
 	dst = append(dst, statusLine(statusCode)...)

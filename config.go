@@ -18,7 +18,7 @@ const (
 
 var (
 	defaultTestDuration  = 10 * time.Second
-	defaultNumberOfConns = uint64(200)
+	defaultNumberOfConns = uint64(125)
 	defaultNumberOfReqs  = uint64(10000)
 	httpMethods          = []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"}
 	cantHaveBody         = []string{"GET", "HEAD"}

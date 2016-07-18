@@ -3,7 +3,6 @@ package fasthttp
 import (
 	"net"
 	"runtime"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +21,8 @@ type workerPool struct {
 	MaxWorkersCount int
 
 	LogAllErrors bool
+
+	MaxIdleWorkerDuration time.Duration
 
 	Logger Logger
 
@@ -48,14 +49,15 @@ func (wp *workerPool) Start() {
 	wp.stopCh = make(chan struct{})
 	stopCh := wp.stopCh
 	go func() {
+		var scratch []*workerChan
 		for {
+			wp.clean(&scratch)
 			select {
 			case <-stopCh:
 				return
 			default:
-				time.Sleep(10 * time.Second)
+				time.Sleep(wp.getMaxIdleWorkerDuration())
 			}
-			wp.clean()
 		}
 	}()
 }
@@ -71,38 +73,56 @@ func (wp *workerPool) Stop() {
 	// Do not wait for busy workers - they will stop after
 	// serving the connection and noticing wp.mustStop = true.
 	wp.lock.Lock()
-	for _, ch := range wp.ready {
+	ready := wp.ready
+	for i, ch := range ready {
 		ch.ch <- nil
+		ready[i] = nil
 	}
-	wp.ready = nil
+	wp.ready = ready[:0]
 	wp.mustStop = true
 	wp.lock.Unlock()
 }
 
-const maxIdleWorkerDuration = 10 * time.Second
+func (wp *workerPool) getMaxIdleWorkerDuration() time.Duration {
+	if wp.MaxIdleWorkerDuration <= 0 {
+		return 10 * time.Second
+	}
+	return wp.MaxIdleWorkerDuration
+}
 
-func (wp *workerPool) clean() {
+func (wp *workerPool) clean(scratch *[]*workerChan) {
+	maxIdleWorkerDuration := wp.getMaxIdleWorkerDuration()
+
 	// Clean least recently used workers if they didn't serve connections
 	// for more than maxIdleWorkerDuration.
 	currentTime := time.Now()
 
 	wp.lock.Lock()
 	ready := wp.ready
-	for len(ready) > 1 && currentTime.Sub(ready[0].lastUseTime) > maxIdleWorkerDuration {
-		// notify the worker to stop.
-		ready[0].ch <- nil
-
-		ready = ready[1:]
-		wp.workersCount--
+	n := len(ready)
+	i := 0
+	for i < n && currentTime.Sub(ready[i].lastUseTime) > maxIdleWorkerDuration {
+		i++
 	}
-	if len(ready) < len(wp.ready) {
-		copy(wp.ready, ready)
-		for i := len(ready); i < len(wp.ready); i++ {
-			wp.ready[i] = nil
+	*scratch = append((*scratch)[:0], ready[:i]...)
+	if i > 0 {
+		m := copy(ready, ready[i:])
+		for i = m; i < n; i++ {
+			ready[i] = nil
 		}
-		wp.ready = wp.ready[:len(ready)]
+		wp.ready = ready[:m]
 	}
 	wp.lock.Unlock()
+
+	// Notify obsolete workers to stop.
+	// This notification must be outside the wp.lock, since ch.ch
+	// may be blocking and may consume a lot of time if many workers
+	// are located on non-local CPUs.
+	tmp := *scratch
+	for i, ch := range tmp {
+		ch.ch <- nil
+		tmp[i] = nil
+	}
 }
 
 func (wp *workerPool) Serve(c net.Conn) bool {
@@ -142,6 +162,7 @@ func (wp *workerPool) getCh() *workerChan {
 		}
 	} else {
 		ch = ready[n]
+		ready[n] = nil
 		wp.ready = ready[:n]
 	}
 	wp.lock.Unlock()
@@ -179,23 +200,19 @@ func (wp *workerPool) release(ch *workerChan) bool {
 
 func (wp *workerPool) workerFunc(ch *workerChan) {
 	var c net.Conn
-	var err error
 
 	defer func() {
-		if r := recover(); r != nil {
-			wp.Logger.Printf("panic: %s\nStack trace:\n%s", r, debug.Stack())
-		}
-
-		if c != nil {
-			c.Close()
-			wp.release(ch)
-		}
+		wp.lock.Lock()
+		wp.workersCount--
+		wp.lock.Unlock()
 	}()
 
+	var err error
 	for c = range ch.ch {
 		if c == nil {
 			break
 		}
+
 		if err = wp.WorkerFunc(c); err != nil && err != errHijacked {
 			errStr := err.Error()
 			if wp.LogAllErrors || !(strings.Contains(errStr, "broken pipe") ||
