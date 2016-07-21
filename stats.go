@@ -28,14 +28,13 @@ func (s *stats) record(val uint64) bool {
 	}
 	atomic.AddUint64(&s.data[val], 1)
 	atomic.AddUint64(&s.count, 1)
-	min := s.min
-	for ; val < min; min = s.min {
+	min := atomic.LoadUint64(&s.min)
+	for ; val < min; min = atomic.LoadUint64(&s.min) {
 		atomic.CompareAndSwapUint64(&s.min, min, val)
 	}
-	max := s.max
-	for ; val > max; max = s.max {
+	max := atomic.LoadUint64(&s.max)
+	for ; val > max; max = atomic.LoadUint64(&s.max) {
 		atomic.CompareAndSwapUint64(&s.max, max, val)
-		max = s.max
 	}
 	return true
 }

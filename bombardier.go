@@ -57,16 +57,10 @@ func newBombardier(c config) (*bombardier, error) {
 	b.requests = newStats(maxRps)
 	if b.conf.testType == counted {
 		b.bar = pb.New64(int64(*b.conf.numReqs))
-		b.barrier = newCountingCompletionBarrier(*c.numReqs, func() {
-			b.bar.Increment()
-		})
 	} else if b.conf.testType == timed {
 		b.bar = pb.New(int(b.conf.duration.Seconds()))
 		b.bar.ShowCounters = false
 		b.bar.ShowPercent = false
-		b.barrier = newTimedCompletionBarrier(c.numConns, tickDuration, *c.duration, func() {
-			b.bar.Increment()
-		})
 	}
 	b.out = os.Stdout
 	b.client = &fasthttp.Client{
@@ -75,6 +69,18 @@ func newBombardier(c config) (*bombardier, error) {
 	b.done = make(chan bool)
 	b.requestHeaders = c.requestHeaders()
 	return b, nil
+}
+
+func (b *bombardier) setupCompletionBarrier() {
+	if b.conf.testType == counted {
+		b.barrier = newCountingCompletionBarrier(*b.conf.numReqs, func() {
+			b.bar.Increment()
+		})
+	} else {
+		b.barrier = newTimedCompletionBarrier(b.conf.numConns, tickDuration, *b.conf.duration, func() {
+			b.bar.Increment()
+		})
+	}
 }
 
 func (b *bombardier) prepareRequest() (*fasthttp.Request, *fasthttp.Response) {
@@ -173,6 +179,7 @@ func (b *bombardier) recordRps() {
 func (b *bombardier) bombard() {
 	b.printIntro()
 	b.bar.Start()
+	b.setupCompletionBarrier()
 	bombardmentBegin := time.Now()
 	b.start = time.Now()
 	for i := uint64(0); i < b.conf.numConns; i++ {
