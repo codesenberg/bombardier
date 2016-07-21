@@ -57,10 +57,10 @@
 			"revisionTime": "2016-07-12T06:12:50Z"
 		},
 		{
-			"checksumSHA1": "vS1cORIwoBXqhDLZ5gZMtLicoBw=",
+			"checksumSHA1": "qHv0+J9OvLtuLKiXGf+6x41Pz+8=",
 			"path": "github.com/valyala/fasthttp",
-			"revision": "881ac52b00ef21896de49a8aa185467c8a9ae49c",
-			"revisionTime": "2016-07-16T14:36:32Z"
+			"revision": "45697fe30a130ec6a54426a069c82f3abe76b63d",
+			"revisionTime": "2016-07-18T15:22:57Z"
 		},
 		{
 			"checksumSHA1": "ieh1CFo/3HC2jWcpnQTjwdPvoek=",

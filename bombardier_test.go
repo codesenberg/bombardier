@@ -5,6 +5,7 @@ import (
 	"container/ring"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -112,10 +113,13 @@ func TestBombardierErrorsCodeRecording(t *testing.T) {
 		codes = codes.Next()
 	}
 	codes = codes.Next()
+	var m sync.Mutex
 	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		m.Lock()
 		nextCode := codes.Value.(int)
-		rw.WriteHeader(nextCode)
 		codes = codes.Next()
+		m.Unlock()
+		rw.WriteHeader(nextCode)
 	}))
 	eachCodeCount := uint64(10)
 	numReqs := uint64(n) * eachCodeCount
