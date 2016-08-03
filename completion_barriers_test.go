@@ -74,7 +74,7 @@ func TestTimedCompletionBarrierWait(t *testing.T) {
 	parties := uint64(10)
 	duration := 100 * time.Millisecond
 	timeout := duration * 2
-	err := 3 * time.Millisecond
+	err := 15 * time.Millisecond
 	sleepDuration := 2 * time.Millisecond
 	tickDuration := 5 * time.Millisecond
 	b := newTimedCompletionBarrier(parties, tickDuration, duration, func() {})
