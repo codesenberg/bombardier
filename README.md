@@ -35,16 +35,16 @@ bombardier -H 'First: Value1' -H 'Second: Value2' -H 'Third: Value3' http://some
 ```
 You should see something like this if you done everything correctly:
 ```
-> bombardier -c 200 -n 10000000 http://localhost:8080
-Bombarding http://localhost:8080 with 10000000 requests using 200 connections
-10000000 / 10000000 [============================================] 100.00 % 47s Done!
+> bombardier -c 125 -n 10000000 http://localhost:8080
+Bombarding http://localhost:8080 with 10000000 requests using 125 connections
+10000000 / 10000000 [============================================] 100.00 % 40s Done!
 Statistics        Avg      Stdev        Max
-  Reqs/sec    209655.00    9914.22     216847
-  Latency        0.95ms   292.09us    37.00ms
+  Reqs/sec    246782.00   11798.53     257026
+  Latency      505.00us   516.77us    51.00ms
   HTTP codes:
     1xx - 0, 2xx - 10000000, 3xx - 0, 4xx - 0, 5xx - 0
-    errored - 0
-  Throughput:   232.12MB/s
+    others - 0
+  Throughput:   273.22MB/s
 ```
 Or, on a realworld server(with latency distribution):
 ```
