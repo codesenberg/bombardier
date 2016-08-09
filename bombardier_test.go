@@ -105,7 +105,7 @@ func TestBombardierShouldSendHeaders(t *testing.T) {
 	b.bombard()
 }
 
-func TestBombardierErrorsCodeRecording(t *testing.T) {
+func TestBombardierHttpCodeRecording(t *testing.T) {
 	n := 7
 	codes := ring.New(n)
 	for i := 0; i < n; i++ {
@@ -143,7 +143,7 @@ func TestBombardierErrorsCodeRecording(t *testing.T) {
 		reqsGot  uint64
 		expected uint64
 	}{
-		{"errored", b.errored, eachCodeCount * 2},
+		{"errored", b.others, eachCodeCount * 2},
 		{"1xx", b.req1xx, eachCodeCount},
 		{"2xx", b.req2xx, eachCodeCount},
 		{"3xx", b.req3xx, eachCodeCount},
@@ -179,7 +179,7 @@ func TestBombardierTimeoutRecoding(t *testing.T) {
 	}
 	b.disableOutput()
 	b.bombard()
-	if b.errored != numReqs {
+	if b.errors.sum() != numReqs {
 		t.Fail()
 	}
 }
@@ -251,17 +251,12 @@ func TestBombardierStatsPrinting(t *testing.T) {
 
 // REMOVE
 // func BenchmarkFireRequest(bm *testing.B) {
-// 	responseSize := 1024
-// 	response := bytes.Repeat([]byte{'a'}, responseSize)
-// 	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-// 		rw.Write(response)
-// 	}))
 // 	longDuration := 9001 * time.Hour
 // 	b, e := newBombardier(config{
 // 		numConns:       defaultNumberOfConns,
 // 		numReqs:        nil,
 // 		duration:       &longDuration,
-// 		url:            s.URL,
+// 		url:            "http://localhost:8080/",
 // 		headers:        new(headersList),
 // 		timeout:        defaultTimeout,
 // 		method:         "GET",
@@ -272,7 +267,9 @@ func TestBombardierStatsPrinting(t *testing.T) {
 // 		bm.Error(e)
 // 	}
 // 	b.disableOutput()
+// 	b.start = time.Now()
 // 	bm.ResetTimer()
+// 	go b.rateMeter()
 // 	bm.RunParallel(func(pb *testing.PB) {
 // 		for pb.Next() {
 // 			req, resp := b.prepareRequest()

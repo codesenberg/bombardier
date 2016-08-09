@@ -200,7 +200,11 @@ func TestCheckArgsInvalidRequestMethod(t *testing.T) {
 		method:   "ABRACADABRA",
 		body:     "",
 	}
-	if c.checkArgs() == nil {
+	e := c.checkArgs()
+	if e == nil {
+		t.Fail()
+	}
+	if _, ok := e.(*invalidHttpMethodError); !ok {
 		t.Fail()
 	}
 }

@@ -48,6 +48,14 @@ type config struct {
 	printLatencies    bool
 }
 
+type invalidHttpMethodError struct {
+	method string
+}
+
+func (i *invalidHttpMethodError) Error() string {
+	return fmt.Sprintf("Unknown HTTP method: %v", i.method)
+}
+
 func (c *config) checkArgs() error {
 	url, err := url.ParseRequestURI(c.url)
 	if err != nil {
@@ -83,7 +91,7 @@ func (c *config) checkArgs() error {
 		return errLargeTimeout
 	}
 	if !allowedHTTPMethod(c.method) {
-		return fmt.Errorf("Unknown HTTP method: %v", c.method)
+		return &invalidHttpMethodError{method: c.method}
 	}
 	if !canHaveBody(c.method) && len(c.body) > 0 {
 		return errBodyNotAllowed

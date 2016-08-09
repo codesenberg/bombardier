@@ -33,12 +33,15 @@ type bombardier struct {
 	start time.Time
 
 	// HTTP codes
-	req1xx  uint64
-	req2xx  uint64
-	req3xx  uint64
-	req4xx  uint64
-	req5xx  uint64
-	errored uint64
+	req1xx uint64
+	req2xx uint64
+	req3xx uint64
+	req4xx uint64
+	req5xx uint64
+	others uint64
+
+	// Errors
+	errors *errorMap
 
 	// Progress bar
 	bar *pb.ProgressBar
@@ -64,8 +67,12 @@ func newBombardier(c config) (*bombardier, error) {
 	}
 	b.out = os.Stdout
 	b.client = &fasthttp.Client{
-		MaxConnsPerHost: int(c.numConns),
+		MaxConnsPerHost:               int(c.numConns),
+		ReadTimeout:                   c.timeout,
+		WriteTimeout:                  c.timeout,
+		DisableHeaderNamesNormalizing: true,
 	}
+	b.errors = newErrorMap()
 	b.done = make(chan bool)
 	b.requestHeaders = c.requestHeaders()
 	return b, nil
@@ -97,9 +104,10 @@ func (b *bombardier) prepareRequest() (*fasthttp.Request, *fasthttp.Response) {
 
 func (b *bombardier) fireRequest(req *fasthttp.Request, resp *fasthttp.Response) (bytesData, bytesTotal int64, code int, msTaken uint64) {
 	start := time.Now()
-	err := b.client.DoTimeout(req, resp, b.conf.timeout)
+	err := b.client.Do(req, resp)
 	if err != nil {
-		code = 0
+		b.errors.add(err)
+		code = -1
 	} else {
 		code = resp.StatusCode()
 	}
@@ -123,8 +131,6 @@ func (b *bombardier) writeStatistics(bytesData, bytesTotal int64, code int, msTa
 	b.rpl.Unlock()
 	var counter *uint64
 	switch code / 100 {
-	case 0:
-		counter = &b.errored
 	case 1:
 		counter = &b.req1xx
 	case 2:
@@ -136,7 +142,7 @@ func (b *bombardier) writeStatistics(bytesData, bytesTotal int64, code int, msTa
 	case 5:
 		counter = &b.req5xx
 	default:
-		counter = &b.errored
+		counter = &b.others
 	}
 	atomic.AddUint64(counter, 1)
 }
@@ -229,7 +235,13 @@ func (b *bombardier) printStats() {
 	fmt.Fprintln(b.out, "  HTTP codes:")
 	fmt.Fprintf(b.out, "    1xx - %v, 2xx - %v, 3xx - %v, 4xx - %v, 5xx - %v\n",
 		b.req1xx, b.req2xx, b.req3xx, b.req4xx, b.req5xx)
-	fmt.Fprintf(b.out, "    errored - %v\n", b.errored)
+	fmt.Fprintf(b.out, "    others - %v\n", b.others)
+	if b.errors.sum() > 0 {
+		fmt.Fprintln(b.out, "  Errors:")
+		for err, count := range b.errors.m {
+			fmt.Fprintf(b.out, "    %10v - %v\n", err, *count)
+		}
+	}
 	fmt.Fprintf(b.out, "  %-10v %10v/s\n", "Throughput:", formatBinary(b.throughput()))
 }
 
