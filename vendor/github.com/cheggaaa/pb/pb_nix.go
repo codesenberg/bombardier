@@ -1,7 +1,8 @@
-// +build linux darwin freebsd netbsd openbsd
+// +build linux darwin freebsd netbsd openbsd dragonfly
+// +build !appengine
 
 package pb
 
 import "syscall"
 
-const sys_ioctl = syscall.SYS_IOCTL
+const sysIoctl = syscall.SYS_IOCTL

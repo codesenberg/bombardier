@@ -3,10 +3,10 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "oEuhln/IB292CVJWryoOtaMrO38=",
+			"checksumSHA1": "wmKDujdXJPUjA99iE0nubi8pQs0=",
 			"path": "github.com/cheggaaa/pb",
-			"revision": "da1f27ad1d9509b16f65f52fd9d8138b0f2dc7b2",
-			"revisionTime": "2015-08-13T11:06:09Z"
+			"revision": "ad4efe000aa550bb54918c06ebbadc0ff17687b9",
+			"revisionTime": "2016-09-05T07:23:56Z"
 		},
 		{
 			"checksumSHA1": "Gn6fYXMv/8s/m1zEYHkEysuusr8=",
@@ -43,12 +43,6 @@
 			"path": "github.com/olekukonko/ts",
 			"revision": "ecf753e7c962639ab5a1fb46f7da627d4c0a04b8",
 			"revisionTime": "2014-04-12T22:01:45Z"
-		},
-		{
-			"checksumSHA1": "9MD6b5Ie9PrN/2+ZzRII7Qoi7sc=",
-			"path": "github.com/tevino/abool",
-			"revision": "6662858d9357f2684573721476a9bb7d9cddeaae",
-			"revisionTime": "2016-06-02T03:48:02Z"
 		},
 		{
 			"checksumSHA1": "CwE3RS09k9xl33pJQBf0BaLHCBQ=",

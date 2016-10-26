@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,8 +25,8 @@ type bombardier struct {
 	latencies  *stats
 	requests   *stats
 
-	client *fasthttp.Client
-	done   chan bool
+	client   *fasthttp.Client
+	doneChan chan struct{}
 
 	// RPS metrics
 	rpl   sync.Mutex
@@ -61,7 +62,7 @@ func newBombardier(c config) (*bombardier, error) {
 	if b.conf.testType == counted {
 		b.bar = pb.New64(int64(*b.conf.numReqs))
 	} else if b.conf.testType == timed {
-		b.bar = pb.New(int(b.conf.duration.Seconds()))
+		b.bar = pb.New64(b.conf.duration.Nanoseconds() / 1e9)
 		b.bar.ShowCounters = false
 		b.bar.ShowPercent = false
 	}
@@ -73,20 +74,16 @@ func newBombardier(c config) (*bombardier, error) {
 		DisableHeaderNamesNormalizing: true,
 	}
 	b.errors = newErrorMap()
-	b.done = make(chan bool)
 	b.requestHeaders = c.requestHeaders()
+	b.doneChan = make(chan struct{}, 2)
 	return b, nil
 }
 
 func (b *bombardier) setupCompletionBarrier() {
 	if b.conf.testType == counted {
-		b.barrier = newCountingCompletionBarrier(*b.conf.numReqs, func() {
-			b.bar.Increment()
-		})
+		b.barrier = newCountingCompletionBarrier(*b.conf.numReqs)
 	} else {
-		b.barrier = newTimedCompletionBarrier(b.conf.numConns, tickDuration, *b.conf.duration, func() {
-			b.bar.Increment()
-		})
+		b.barrier = newTimedCompletionBarrier(*b.conf.duration)
 	}
 }
 
@@ -148,25 +145,44 @@ func (b *bombardier) writeStatistics(bytesData, bytesTotal int64, code int, msTa
 }
 
 func (b *bombardier) worker() {
-	for b.barrier.grabWork() {
+	for b.barrier.tryGrabWork() {
 		req, resp := b.prepareRequest()
 		bytesData, bytesTotal, code, msTaken := b.fireRequest(req, resp)
 		b.releaseRequest(req, resp)
 		b.writeStatistics(bytesData, bytesTotal, code, msTaken)
-		b.barrier.jobDone()
+	}
+}
+
+func (b *bombardier) barUpdater() {
+	done := b.barrier.done()
+	for {
+		select {
+		case <-done:
+			b.bar.Set64(b.bar.Total)
+			b.bar.Update()
+			b.bar.Finish()
+			fmt.Fprintln(b.out, "Done!")
+			b.doneChan <- struct{}{}
+			return
+		default:
+			current := int64(b.barrier.completed() * float64(b.bar.Total))
+			b.bar.Set64(current)
+			time.Sleep(b.bar.RefreshRate)
+		}
 	}
 }
 
 func (b *bombardier) rateMeter() {
 	tick := time.Tick(requestsInterval)
+	done := b.barrier.done()
 	for {
 		select {
 		case <-tick:
 			b.recordRps()
 			continue
-		case <-b.done:
+		case <-done:
 			b.recordRps()
-			b.done <- true
+			b.doneChan <- struct{}{}
 			return
 		}
 	}
@@ -188,16 +204,21 @@ func (b *bombardier) bombard() {
 	b.setupCompletionBarrier()
 	bombardmentBegin := time.Now()
 	b.start = time.Now()
+	var workers sync.WaitGroup
+	workers.Add(int(b.conf.numConns))
 	for i := uint64(0); i < b.conf.numConns; i++ {
-		go b.worker()
+		go func() {
+			defer workers.Done()
+			b.worker()
+		}()
 	}
 	go b.rateMeter()
-	b.barrier.wait()
+	go b.barUpdater()
+	<-b.barrier.done()
+	workers.Wait()
 	b.timeTaken = time.Since(bombardmentBegin)
-	b.done <- true
-	<-b.done
-	b.bar.Finish()
-	fmt.Fprintln(b.out, "Done!")
+	<-b.doneChan
+	<-b.doneChan
 }
 
 func (b *bombardier) throughput() float64 {
@@ -278,6 +299,12 @@ func main() {
 		fmt.Println(err)
 		os.Exit(exitFailure)
 	}
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		bombardier.barrier.cancel()
+	}()
 	bombardier.bombard()
 	bombardier.printStats()
 }

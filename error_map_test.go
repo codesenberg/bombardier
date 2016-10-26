@@ -16,6 +16,15 @@ func TestErrorMapAdd(t *testing.T) {
 	}
 }
 
+func TestErrorMapGet(t *testing.T) {
+	m := newErrorMap()
+	err := errors.New("get")
+	if c := m.get(err); c != 0 {
+		t.Log(c)
+		t.Fail()
+	}
+}
+
 func BenchmarkErrorMapAdd(b *testing.B) {
 	m := newErrorMap()
 	err := errors.New("benchmark")

@@ -35,9 +35,6 @@ func TestShouldErrorOnInvalidFormat(t *testing.T) {
 	if err := h.Set("Yaba daba do"); err == nil {
 		t.Error("Should fail on strings without colon")
 	}
-	if err := h.Set("Key: Value: Value"); err == nil {
-		t.Error("Should fail on strings with more than one colon")
-	}
 }
 
 func TestShouldProperlyAddValidHeaders(t *testing.T) {

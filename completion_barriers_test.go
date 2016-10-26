@@ -1,36 +1,19 @@
 package main
 
 import (
-	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func TestCountingCompletionBarrier(t *testing.T) {
-	callsCount := uint64(0)
-	expectedCallsCount := uint64(10)
-	b := newCountingCompletionBarrier(expectedCallsCount, func() {
-		atomic.AddUint64(&callsCount, 1)
-	})
-	for b.grabWork() {
-		b.jobDone()
-	}
-	if callsCount != expectedCallsCount {
-		t.Errorf("Expected to get %v calls, but got %v instead",
-			expectedCallsCount, callsCount)
-	}
-}
-
 func TestCouintingCompletionBarrierWait(t *testing.T) {
-	b := newCountingCompletionBarrier(100, func() {})
+	b := newCountingCompletionBarrier(100)
 	go func() {
-		for b.grabWork() {
-			b.jobDone()
+		for b.tryGrabWork() {
 		}
 	}()
 	wc := make(chan struct{})
 	go func() {
-		b.wait()
+		<-b.done()
 		wc <- struct{}{}
 	}()
 	select {
@@ -41,47 +24,16 @@ func TestCouintingCompletionBarrierWait(t *testing.T) {
 	}
 }
 
-func TestTimedCompletionBarrier(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode")
-	}
-	tickCount := uint64(0)
-	parties := uint64(10)
-	duration := 100 * time.Millisecond
-	tickDuration := 10 * time.Millisecond
-	b := newTimedCompletionBarrier(parties, tickDuration, duration, func() {
-		atomic.AddUint64(&tickCount, 1)
-	})
-	callsCount := uint64(0)
-	for i := uint64(0); i < parties; i++ {
-		go func() {
-			for b.grabWork() {
-				atomic.AddUint64(&callsCount, 1)
-				b.jobDone()
-			}
-		}()
-	}
-	b.wait()
-	if callsCount == 0 {
-		t.Errorf("Workers haven't done any work")
-	}
-	if tickCount == 0 {
-		t.Errorf("Tick callback wasn't called even once")
-	}
-}
-
 func TestTimedCompletionBarrierWait(t *testing.T) {
 	parties := uint64(10)
 	duration := 100 * time.Millisecond
 	timeout := duration * 2
 	err := 15 * time.Millisecond
 	sleepDuration := 2 * time.Millisecond
-	tickDuration := 5 * time.Millisecond
-	b := newTimedCompletionBarrier(parties, tickDuration, duration, func() {})
+	b := newTimedCompletionBarrier(duration)
 	for i := uint64(0); i < parties; i++ {
 		go func() {
-			for b.grabWork() {
-				b.jobDone()
+			for b.tryGrabWork() {
 				time.Sleep(sleepDuration)
 			}
 		}()
@@ -89,7 +41,7 @@ func TestTimedCompletionBarrierWait(t *testing.T) {
 	wc := make(chan time.Duration)
 	go func() {
 		start := time.Now()
-		b.wait()
+		<-b.done()
 		wc <- time.Since(start)
 	}()
 	select {
@@ -100,6 +52,55 @@ func TestTimedCompletionBarrierWait(t *testing.T) {
 	case <-time.After(timeout):
 		t.Error("Barrier hanged")
 	}
+}
+
+func TestTimeBarrierCancel(t *testing.T) {
+	b := newTimedCompletionBarrier(9000 * time.Second)
+	sleepTime := 100 * time.Millisecond
+	go func() {
+		time.Sleep(sleepTime)
+		b.cancel()
+	}()
+	select {
+	case <-b.done():
+		if c := b.completed(); c != 1.0 {
+			t.Log(c)
+			t.Fail()
+		}
+	case <-time.After(sleepTime * 2):
+		t.Fail()
+	}
+}
+
+func TestCountedBarrierCancel(t *testing.T) {
+	b := newCountingCompletionBarrier(9000)
+	sleepTime := 100 * time.Millisecond
+	go func() {
+		time.Sleep(sleepTime)
+		b.cancel()
+	}()
+	select {
+	case <-b.done():
+		if c := b.completed(); c != 1.0 {
+			t.Log(c)
+			t.Fail()
+		}
+	case <-time.After(5 * time.Second):
+		t.Fail()
+	}
+}
+
+func TestTimeBarrierPanicOnBadDuration(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Error("shouldn't be empty")
+			t.Fail()
+		}
+	}()
+	newTimedCompletionBarrier(-1 * time.Second)
+	t.Error("unreachable")
+	t.Fail()
 }
 
 func approximatelyEqual(expected, actual, err time.Duration) bool {

@@ -311,3 +311,13 @@ func TestConfigRequestHeaders(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestInvalidHTTPMethodError(t *testing.T) {
+	invalidMethod := "NOSUCHMETHOD"
+	want := "Unknown HTTP method: " + invalidMethod
+	err := &invalidHttpMethodError{invalidMethod}
+	if got := err.Error(); got != want {
+		t.Log(got, want)
+		t.Fail()
+	}
+}

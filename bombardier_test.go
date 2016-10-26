@@ -38,7 +38,7 @@ func TestBombardierShouldFireSpecifiedNumberOfRequests(t *testing.T) {
 	}
 }
 
-func TestBombardierShouldRunTestForSpecifiedDuration(t *testing.T) {
+func TestBombardierShouldFinish(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
@@ -48,7 +48,6 @@ func TestBombardierShouldRunTestForSpecifiedDuration(t *testing.T) {
 	}))
 	noHeaders := new(headersList)
 	desiredTestDuration := 1 * time.Second
-	desiredError := 100 * time.Millisecond
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
 		numReqs:  nil,
@@ -63,11 +62,15 @@ func TestBombardierShouldRunTestForSpecifiedDuration(t *testing.T) {
 		t.Error(e)
 	}
 	b.disableOutput()
-	start := time.Now()
-	b.bombard()
-	testDuration := time.Since(start)
-	if !approximatelyEqual(desiredTestDuration, testDuration, desiredError) {
-		t.Log(desiredTestDuration, testDuration)
+	waitCh := make(chan struct{})
+	go func() {
+		b.bombard()
+		waitCh <- struct{}{}
+	}()
+	select {
+	case <-waitCh:
+	// Do nothing here
+	case <-time.After(desiredTestDuration + 5*time.Second):
 		t.Fail()
 	}
 	if reqsReceived == 0 {
@@ -249,7 +252,7 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	}
 }
 
-// REMOVE
+// TODO(codesenberd): remove or rewrite
 // func BenchmarkFireRequest(bm *testing.B) {
 // 	longDuration := 9001 * time.Hour
 // 	b, e := newBombardier(config{
