@@ -204,7 +204,7 @@ func TestCheckArgsInvalidRequestMethod(t *testing.T) {
 	if e == nil {
 		t.Fail()
 	}
-	if _, ok := e.(*invalidHttpMethodError); !ok {
+	if _, ok := e.(*invalidHTTPMethodError); !ok {
 		t.Fail()
 	}
 }
@@ -315,7 +315,7 @@ func TestConfigRequestHeaders(t *testing.T) {
 func TestInvalidHTTPMethodError(t *testing.T) {
 	invalidMethod := "NOSUCHMETHOD"
 	want := "Unknown HTTP method: " + invalidMethod
-	err := &invalidHttpMethodError{invalidMethod}
+	err := &invalidHTTPMethodError{invalidMethod}
 	if got := err.Error(); got != want {
 		t.Log(got, want)
 		t.Fail()

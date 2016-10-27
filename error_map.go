@@ -40,9 +40,8 @@ func (e *errorMap) get(err error) uint64 {
 	c := e.m[s]
 	if c == nil {
 		return uint64(0)
-	} else {
-		return *c
 	}
+	return *c
 }
 
 func (e *errorMap) sum() uint64 {
