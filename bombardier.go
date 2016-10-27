@@ -72,6 +72,7 @@ func newBombardier(c config) (*bombardier, error) {
 		ReadTimeout:                   c.timeout,
 		WriteTimeout:                  c.timeout,
 		DisableHeaderNamesNormalizing: true,
+		TLSConfig:                     generateTLSConfig(c),
 	}
 	b.errors = newErrorMap()
 	b.requestHeaders = c.requestHeaders()
