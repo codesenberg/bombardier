@@ -21,14 +21,16 @@ var (
 type defaultParser struct {
 	fs *flag.FlagSet
 
-	numReqs   *nullableUint64
-	duration  *nullableDuration
-	headers   *headersList
-	numConns  uint64
-	timeout   time.Duration
-	latencies bool
-	method    string
-	body      string
+	numReqs    *nullableUint64
+	duration   *nullableDuration
+	headers    *headersList
+	numConns   uint64
+	timeout    time.Duration
+	latencies  bool
+	insecure   bool
+	method     string
+	body       string
+	clientCert string
 }
 
 func newDefaultParser() *defaultParser {
@@ -42,6 +44,8 @@ func newDefaultParser() *defaultParser {
 	dp.fs.BoolVar(&dp.latencies, "latencies", false, "Print latency statistics")
 	dp.fs.StringVar(&dp.method, "m", "GET", "Request method")
 	dp.fs.StringVar(&dp.body, "data", "", "Request body")
+	dp.fs.StringVar(&dp.clientCert, "cert", "", "Client tls certificate")
+	dp.fs.BoolVar(&dp.insecure, "insecure", false, "Set tls config to insecure mode")
 	dp.fs.Var(dp.headers, "H", "HTTP headers to use")
 	dp.fs.Var(dp.numReqs, "n", "Number of requests")
 	dp.fs.Var(dp.duration, "d", "Duration of test")
@@ -74,7 +78,9 @@ func (p *defaultParser) parse(args []string) (config, error) {
 		timeout:        p.timeout,
 		method:         p.method,
 		body:           p.body,
+		clientCert:     p.clientCert,
 		printLatencies: p.latencies,
+		insecure:       p.insecure,
 	}, nil
 }
 
