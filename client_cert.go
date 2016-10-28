@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+var (
+	ioutilReadFile = ioutil.ReadFile
+	logFatalf      = log.Fatalf
+	tlsX509KeyPair = tls.X509KeyPair
+)
+
 // readClientCert - helper function to read client certificate
 // from pem formatted file
 func readClientCert(filename string) []tls.Certificate {
@@ -20,9 +26,9 @@ func readClientCert(filename string) []tls.Certificate {
 	)
 
 	// read client certificate file (must include client private key and certificate)
-	certFileBytes, err := ioutil.ReadFile(filename)
+	certFileBytes, err := ioutilReadFile(filename)
 	if err != nil {
-		log.Fatalf("failed to read client certificate file: %v", err)
+		logFatalf("failed to read client certificate file: %v", err)
 	}
 
 	for {
@@ -40,9 +46,9 @@ func readClientCert(filename string) []tls.Certificate {
 		}
 	}
 
-	cert, err := tls.X509KeyPair(certPem, pkeyPem)
+	cert, err := tlsX509KeyPair(certPem, pkeyPem)
 	if err != nil {
-		log.Fatalf("unable to load client cert and key pair: %v", err)
+		logFatalf("unable to load client cert and key pair: %v", err)
 	}
 	return []tls.Certificate{cert}
 }
