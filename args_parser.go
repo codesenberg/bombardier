@@ -21,16 +21,17 @@ var (
 type defaultParser struct {
 	fs *flag.FlagSet
 
-	numReqs    *nullableUint64
-	duration   *nullableDuration
-	headers    *headersList
-	numConns   uint64
-	timeout    time.Duration
-	latencies  bool
-	insecure   bool
-	method     string
-	body       string
-	clientCert string
+	numReqs   *nullableUint64
+	duration  *nullableDuration
+	headers   *headersList
+	numConns  uint64
+	timeout   time.Duration
+	latencies bool
+	insecure  bool
+	method    string
+	body      string
+	certPath  string
+	keyPath   string
 }
 
 func newDefaultParser() *defaultParser {
@@ -44,8 +45,9 @@ func newDefaultParser() *defaultParser {
 	dp.fs.BoolVar(&dp.latencies, "latencies", false, "Print latency statistics")
 	dp.fs.StringVar(&dp.method, "m", "GET", "Request method")
 	dp.fs.StringVar(&dp.body, "data", "", "Request body")
-	dp.fs.StringVar(&dp.clientCert, "cert", "", "Client tls certificate")
-	dp.fs.BoolVar(&dp.insecure, "insecure", false, "Set tls config to insecure mode")
+	dp.fs.StringVar(&dp.certPath, "cert", "", "Path to the client's TLS Certificate")
+	dp.fs.StringVar(&dp.keyPath, "key", "", "Path to the client's TLS Certificate Private Key")
+	dp.fs.BoolVar(&dp.insecure, "insecure", false, "Controls whether a client verifies the server's certificate chain and host name")
 	dp.fs.Var(dp.headers, "H", "HTTP headers to use")
 	dp.fs.Var(dp.numReqs, "n", "Number of requests")
 	dp.fs.Var(dp.duration, "d", "Duration of test")
@@ -78,7 +80,8 @@ func (p *defaultParser) parse(args []string) (config, error) {
 		timeout:        p.timeout,
 		method:         p.method,
 		body:           p.body,
-		clientCert:     p.clientCert,
+		keyPath:        p.keyPath,
+		certPath:       p.certPath,
 		printLatencies: p.latencies,
 		insecure:       p.insecure,
 	}, nil
