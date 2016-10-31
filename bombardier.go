@@ -72,8 +72,14 @@ func newBombardier(c config) (*bombardier, error) {
 		ReadTimeout:                   c.timeout,
 		WriteTimeout:                  c.timeout,
 		DisableHeaderNamesNormalizing: true,
-		TLSConfig:                     generateTLSConfig(c),
 	}
+
+	tlsConfig, err := generateTLSConfig(c)
+	if err != nil {
+		return nil, err
+	}
+	b.client.TLSConfig = tlsConfig
+
 	b.errors = newErrorMap()
 	b.requestHeaders = c.requestHeaders()
 	b.doneChan = make(chan struct{}, 2)

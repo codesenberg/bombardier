@@ -38,14 +38,14 @@ func init() {
 }
 
 type config struct {
-	numConns                      uint64
-	numReqs                       *uint64
-	duration                      *time.Duration
-	url, method, body, clientCert string
-	headers                       *headersList
-	timeout                       time.Duration
-	testType                      int
-	printLatencies, insecure      bool
+	numConns                             uint64
+	numReqs                              *uint64
+	duration                             *time.Duration
+	url, method, body, certPath, keyPath string
+	headers                              *headersList
+	timeout                              time.Duration
+	testType                             int
+	printLatencies, insecure             bool
 }
 
 type invalidHTTPMethodError struct {
