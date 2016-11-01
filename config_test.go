@@ -160,6 +160,36 @@ func TestCheckArgs(t *testing.T) {
 			},
 			nil,
 		},
+		{
+			config{
+				numConns: defaultNumberOfConns,
+				numReqs:  &defaultNumberOfReqs,
+				duration: &defaultTestDuration,
+				url:      "http://localhost:8080",
+				headers:  noHeaders,
+				timeout:  defaultTimeout,
+				method:   "GET",
+				body:     "",
+				certPath: "test_cert.pem",
+				keyPath:  "",
+			},
+			errNoPathToKey,
+		},
+		{
+			config{
+				numConns: defaultNumberOfConns,
+				numReqs:  &defaultNumberOfReqs,
+				duration: &defaultTestDuration,
+				url:      "http://localhost:8080",
+				headers:  noHeaders,
+				timeout:  defaultTimeout,
+				method:   "GET",
+				body:     "",
+				certPath: "",
+				keyPath:  "test_key.pem",
+			},
+			errNoPathToCert,
+		},
 	}
 	for _, e := range expectations {
 		if r := e.in.checkArgs(); r != e.out {
