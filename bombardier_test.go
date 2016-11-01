@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"container/ring"
-	"crypto/tls"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -286,11 +284,6 @@ func TestBombardierStatsPrinting(t *testing.T) {
 // }
 
 func TestBombardierErrorIfFailToReadClientCert(t *testing.T) {
-	tlsLoadX509KeyPair = func(certFile, keyFile string) (tls.Certificate, error) {
-		return tls.Certificate{}, errors.New("failure")
-	}
-	defer func() { tlsLoadX509KeyPair = tls.LoadX509KeyPair }()
-
 	numReqs := uint64(10)
 	_, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
@@ -306,10 +299,6 @@ func TestBombardierErrorIfFailToReadClientCert(t *testing.T) {
 		keyPath:        "keyPath",
 	})
 	if e == nil {
-		t.Error("expected failure in newBombardier due to failed loading of tls client cert")
-	}
-	if e.Error() != "failure" {
-		t.Error("incorrect error observed")
-
+		t.Fail()
 	}
 }

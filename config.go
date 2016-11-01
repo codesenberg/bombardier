@@ -30,6 +30,8 @@ var (
 	errNegativeTimeout         = errors.New("Timeout can't be negative")
 	errLargeTimeout            = errors.New("Timeout is too big(more that 10s)")
 	errBodyNotAllowed          = errors.New("GET and HEAD requests cannot have body")
+	errNoPathToCert            = errors.New("No Path to TLS Client Certificate")
+	errNoPathToKey             = errors.New("No Path to TLS Client Certificate Private Key")
 )
 
 func init() {
@@ -92,6 +94,11 @@ func (c *config) checkArgs() error {
 	}
 	if !allowedHTTPMethod(c.method) {
 		return &invalidHTTPMethodError{method: c.method}
+	}
+	if c.certPath != "" && c.keyPath == "" {
+		return errNoPathToKey
+	} else if c.certPath == "" && c.keyPath != "" {
+		return errNoPathToCert
 	}
 	if !canHaveBody(c.method) && len(c.body) > 0 {
 		return errBodyNotAllowed
