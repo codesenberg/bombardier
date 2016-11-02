@@ -15,17 +15,23 @@ Also, you can supply these options:
   -H value
         HTTP headers to use
   -c uint
-        Maximum number of concurrent connections (default 200)
-  -n value
-        Number of requests
+        Maximum number of concurrent connections (default 125)
+  -cert string
+        Path to the client's TLS Certificate
   -d value
         Duration of test
   -data string
         Request body
+  -insecure
+        Controls whether a client verifies the server's certificate chain and host name (default true)
+  -key string
+        Path to the client's TLS Certificate Private Key
   -latencies
         Print latency statistics
   -m string
         Request method (default "GET")
+  -n value
+        Number of requests
   -timeout duration
         Socket/request timeout (default 2s)
 ```
