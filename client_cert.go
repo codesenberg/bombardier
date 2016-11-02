@@ -1,6 +1,10 @@
 package main
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+	"net"
+	"net/url"
+)
 
 // readClientCert - helper function to read client certificate
 // from pem formatted certPath and keyPath files
@@ -24,8 +28,20 @@ func generateTLSConfig(c config) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &tls.Config{
+	uri, err := url.ParseRequestURI(c.url)
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.insecure,
 		Certificates:       certs,
-	}, nil
+	}
+	if uri.Scheme == "https" {
+		host, _, err := net.SplitHostPort(uri.Host)
+		if err != nil {
+			host = uri.Host
+		}
+		tlsConfig.ServerName = host
+	}
+	return tlsConfig, nil
 }

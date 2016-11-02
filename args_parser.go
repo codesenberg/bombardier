@@ -47,7 +47,7 @@ func newDefaultParser() *defaultParser {
 	dp.fs.StringVar(&dp.body, "data", "", "Request body")
 	dp.fs.StringVar(&dp.certPath, "cert", "", "Path to the client's TLS Certificate")
 	dp.fs.StringVar(&dp.keyPath, "key", "", "Path to the client's TLS Certificate Private Key")
-	dp.fs.BoolVar(&dp.insecure, "insecure", true, "Controls whether a client verifies the server's certificate chain and host name")
+	dp.fs.BoolVar(&dp.insecure, "insecure", false, "Controls whether a client verifies the server's certificate chain and host name")
 	dp.fs.Var(dp.headers, "H", "HTTP headers to use")
 	dp.fs.Var(dp.numReqs, "n", "Number of requests")
 	dp.fs.Var(dp.duration, "d", "Duration of test")

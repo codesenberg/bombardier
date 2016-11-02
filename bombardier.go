@@ -280,7 +280,6 @@ func (b *bombardier) redirectOutputTo(out io.Writer) {
 
 func (b *bombardier) disableOutput() {
 	b.redirectOutputTo(ioutil.Discard)
-	b.bar.Output = ioutil.Discard
 	b.bar.NotPrint = true
 }
 

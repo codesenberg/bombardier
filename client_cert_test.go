@@ -25,7 +25,7 @@ func TestGenerateTLSConfig(t *testing.T) {
 		},
 	}
 	for _, e := range expectations {
-		_, r := generateTLSConfig(config{certPath: e.certPath, keyPath: e.keyPath})
+		_, r := generateTLSConfig(config{url: "https://doesnt.exist.com", certPath: e.certPath, keyPath: e.keyPath})
 		if (r == nil) != e.errIsNil {
 			t.Log(e.certPath, e.keyPath, r)
 			t.Fail()
