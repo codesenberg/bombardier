@@ -59,12 +59,20 @@ func newBombardier(c config) (*bombardier, error) {
 	b.conf = c
 	b.latencies = newStats(c.timeoutMillis())
 	b.requests = newStats(maxRps)
+
 	if b.conf.testType == counted {
 		b.bar = pb.New64(int64(*b.conf.numReqs))
 	} else if b.conf.testType == timed {
 		b.bar = pb.New64(b.conf.duration.Nanoseconds() / 1e9)
 		b.bar.ShowCounters = false
 		b.bar.ShowPercent = false
+	}
+	b.bar.ManualUpdate = true
+
+	if b.conf.testType == counted {
+		b.barrier = newCountingCompletionBarrier(*b.conf.numReqs)
+	} else {
+		b.barrier = newTimedCompletionBarrier(*b.conf.duration)
 	}
 	b.out = os.Stdout
 	b.client = &fasthttp.Client{
@@ -84,14 +92,6 @@ func newBombardier(c config) (*bombardier, error) {
 	b.requestHeaders = c.requestHeaders()
 	b.doneChan = make(chan struct{}, 2)
 	return b, nil
-}
-
-func (b *bombardier) setupCompletionBarrier() {
-	if b.conf.testType == counted {
-		b.barrier = newCountingCompletionBarrier(*b.conf.numReqs)
-	} else {
-		b.barrier = newTimedCompletionBarrier(*b.conf.duration)
-	}
 }
 
 func (b *bombardier) prepareRequest() (*fasthttp.Request, *fasthttp.Response) {
@@ -174,6 +174,7 @@ func (b *bombardier) barUpdater() {
 		default:
 			current := int64(b.barrier.completed() * float64(b.bar.Total))
 			b.bar.Set64(current)
+			b.bar.Update()
 			time.Sleep(b.bar.RefreshRate)
 		}
 	}
@@ -208,7 +209,6 @@ func (b *bombardier) recordRps() {
 func (b *bombardier) bombard() {
 	b.printIntro()
 	b.bar.Start()
-	b.setupCompletionBarrier()
 	bombardmentBegin := time.Now()
 	b.start = time.Now()
 	var workers sync.WaitGroup
@@ -280,6 +280,7 @@ func (b *bombardier) redirectOutputTo(out io.Writer) {
 
 func (b *bombardier) disableOutput() {
 	b.redirectOutputTo(ioutil.Discard)
+	b.bar.Output = ioutil.Discard
 	b.bar.NotPrint = true
 }
 

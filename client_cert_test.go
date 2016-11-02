@@ -6,41 +6,27 @@ func TestGenerateTLSConfig(t *testing.T) {
 	expectations := []struct {
 		certPath string
 		keyPath  string
-		errTest  func(error) bool
+		errIsNil bool
 	}{
 		{
 			certPath: "test_cert.pem",
 			keyPath:  "test_key.pem",
-			errTest: func(err error) bool {
-				if err == nil {
-					return true
-				}
-				return false
-			},
+			errIsNil: true,
 		},
 		{
 			certPath: "doesnotexist.pem",
 			keyPath:  "doesnotexist.pem",
-			errTest: func(err error) bool {
-				if err != nil {
-					return true
-				}
-				return false
-			},
+			errIsNil: false,
 		},
 		{
 			certPath: "",
 			keyPath:  "",
-			errTest: func(err error) bool {
-				if err == nil {
-					return true
-				}
-				return false
-			},
+			errIsNil: true,
 		},
 	}
 	for _, e := range expectations {
-		if _, r := generateTLSConfig(config{certPath: e.certPath, keyPath: e.keyPath}); !e.errTest(r) {
+		_, r := generateTLSConfig(config{certPath: e.certPath, keyPath: e.keyPath})
+		if (r == nil) != e.errIsNil {
 			t.Log(e.certPath, e.keyPath, r)
 			t.Fail()
 		}
