@@ -18,6 +18,7 @@ type bombardier struct {
 	conf           config
 	requestHeaders *fasthttp.RequestHeader
 	barrier        completionBarrier
+	workers        sync.WaitGroup
 
 	bytesTotal int64
 	bytesData  int64
@@ -88,6 +89,7 @@ func newBombardier(c config) (*bombardier, error) {
 	}
 	b.client.TLSConfig = tlsConfig
 
+	b.workers.Add(int(c.numConns))
 	b.errors = newErrorMap()
 	b.requestHeaders = c.requestHeaders()
 	b.doneChan = make(chan struct{}, 2)
@@ -181,7 +183,9 @@ func (b *bombardier) barUpdater() {
 }
 
 func (b *bombardier) rateMeter() {
-	tick := time.Tick(requestsInterval)
+	ticker := time.NewTicker(requestsInterval)
+	defer ticker.Stop()
+	tick := ticker.C
 	done := b.barrier.done()
 	for {
 		select {
@@ -189,6 +193,7 @@ func (b *bombardier) rateMeter() {
 			b.recordRps()
 			continue
 		case <-done:
+			b.workers.Wait()
 			b.recordRps()
 			b.doneChan <- struct{}{}
 			return
@@ -211,18 +216,15 @@ func (b *bombardier) bombard() {
 	b.bar.Start()
 	bombardmentBegin := time.Now()
 	b.start = time.Now()
-	var workers sync.WaitGroup
-	workers.Add(int(b.conf.numConns))
 	for i := uint64(0); i < b.conf.numConns; i++ {
 		go func() {
-			defer workers.Done()
+			defer b.workers.Done()
 			b.worker()
 		}()
 	}
 	go b.rateMeter()
 	go b.barUpdater()
-	<-b.barrier.done()
-	workers.Wait()
+	b.workers.Wait()
 	b.timeTaken = time.Since(bombardmentBegin)
 	<-b.doneChan
 	<-b.doneChan
@@ -286,7 +288,6 @@ func (b *bombardier) disableOutput() {
 const (
 	maxRps           = 10000000
 	requestsInterval = 100 * time.Millisecond
-	tickDuration     = 1 * time.Second
 	defaultTimeout   = 2 * time.Second
 
 	programName = "bombardier"
@@ -295,13 +296,13 @@ const (
 )
 
 func main() {
-	config, err := parser.parse(os.Args)
+	cfg, err := parser.parse(os.Args)
 	if err != nil {
 		fmt.Println(err)
 		parser.usage(os.Stdout)
 		os.Exit(exitFailure)
 	}
-	bombardier, err := newBombardier(config)
+	bombardier, err := newBombardier(cfg)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(exitFailure)

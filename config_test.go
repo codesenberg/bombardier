@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+var (
+	defaultNumberOfReqs = uint64(10000)
+)
+
 func TestCanHaveBody(t *testing.T) {
 	expectations := []struct {
 		in  string

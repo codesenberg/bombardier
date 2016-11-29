@@ -191,7 +191,11 @@ func TestBombardierThroughputRecording(t *testing.T) {
 	responseSize := 1024
 	response := bytes.Repeat([]byte{'a'}, responseSize)
 	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rw.Write(response)
+		_, err := rw.Write(response)
+		if err != nil {
+			t.Log(err)
+			t.Fail()
+		}
 	}))
 	numReqs := uint64(10)
 	b, e := newBombardier(config{
@@ -224,7 +228,11 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	responseSize := 1024
 	response := bytes.Repeat([]byte{'a'}, responseSize)
 	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rw.Write(response)
+		_, err := rw.Write(response)
+		if err != nil {
+			t.Log(err)
+			t.Fail()
+		}
 	}))
 	numReqs := uint64(10)
 	b, e := newBombardier(config{

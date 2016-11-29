@@ -8,6 +8,10 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
+var (
+	errInvalidHeaderFormat = errors.New("invalid header format")
+)
+
 type header struct {
 	key, value string
 }
@@ -21,7 +25,7 @@ func (h *headersList) String() string {
 func (h *headersList) Set(value string) error {
 	res := strings.SplitN(value, ":", 2)
 	if len(res) != 2 {
-		return errors.New("invalid header format")
+		return errInvalidHeaderFormat
 	}
 	*h = append(*h, header{
 		res[0], strings.Trim(res[1], " "),

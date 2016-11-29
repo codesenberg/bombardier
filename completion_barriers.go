@@ -111,7 +111,7 @@ func (c *timedCompletionBarrier) completed() float64 {
 	case <-c.doneChan:
 		return 1.0
 	default:
-		return float64(time.Now().Sub(c.start).Nanoseconds()) /
+		return float64(time.Since(c.start).Nanoseconds()) /
 			float64(c.duration.Nanoseconds())
 	}
 }

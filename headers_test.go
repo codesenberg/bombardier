@@ -39,8 +39,12 @@ func TestShouldErrorOnInvalidFormat(t *testing.T) {
 
 func TestShouldProperlyAddValidHeaders(t *testing.T) {
 	h := new(headersList)
-	h.Set("Key1: Value1")
-	h.Set("Key2: Value2")
+	for _, hs := range []string{"Key1: Value1", "Key2: Value2"} {
+		if err := h.Set(hs); err != nil {
+			t.Log(err)
+			t.Fail()
+		}
+	}
 	e := []header{{"Key1", "Value1"}, {"Key2", "Value2"}}
 	for i, v := range *h {
 		if e[i] != v {
@@ -51,7 +55,10 @@ func TestShouldProperlyAddValidHeaders(t *testing.T) {
 
 func TestShouldTrimHeaderValues(t *testing.T) {
 	h := new(headersList)
-	h.Set("Key:   Value   ")
+	if err := h.Set("Key:   Value   "); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
 	if (*h)[0].key != "Key" || (*h)[0].value != "Value" {
 		t.Fail()
 	}
@@ -59,8 +66,14 @@ func TestShouldTrimHeaderValues(t *testing.T) {
 
 func TestShouldProperlyConvertToFastHttpHeaders(t *testing.T) {
 	h := new(headersList)
-	h.Set("Content-Type: application/json")
-	h.Set("Custom-Header: xxx42xxx")
+	for _, hs := range []string{
+		"Content-Type: application/json", "Custom-Header: xxx42xxx",
+	} {
+		if err := h.Set(hs); err != nil {
+			t.Log(err)
+			t.Fail()
+		}
+	}
 	fh := h.toRequestHeader()
 	if e, a := []byte("application/json"), fh.Peek("Content-Type"); !bytes.Equal(e, a) {
 		t.Errorf("Expected %v, but got %v", e, a)
