@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	pb "github.com/cheggaaa/pb"
+	"github.com/cheggaaa/pb"
 	"github.com/valyala/fasthttp"
 )
 
@@ -61,33 +61,34 @@ func newBombardier(c config) (*bombardier, error) {
 	b.latencies = newStats(c.timeoutMillis())
 	b.requests = newStats(maxRps)
 
-	if b.conf.testType == counted {
+	if b.conf.testType() == counted {
 		b.bar = pb.New64(int64(*b.conf.numReqs))
-	} else if b.conf.testType == timed {
+	} else if b.conf.testType() == timed {
 		b.bar = pb.New64(b.conf.duration.Nanoseconds() / 1e9)
 		b.bar.ShowCounters = false
 		b.bar.ShowPercent = false
 	}
 	b.bar.ManualUpdate = true
 
-	if b.conf.testType == counted {
+	if b.conf.testType() == counted {
 		b.barrier = newCountingCompletionBarrier(*b.conf.numReqs)
 	} else {
 		b.barrier = newTimedCompletionBarrier(*b.conf.duration)
 	}
 	b.out = os.Stdout
-	b.client = &fasthttp.Client{
-		MaxConnsPerHost:               int(c.numConns),
-		ReadTimeout:                   c.timeout,
-		WriteTimeout:                  c.timeout,
-		DisableHeaderNamesNormalizing: true,
-	}
 
 	tlsConfig, err := generateTLSConfig(c)
 	if err != nil {
 		return nil, err
 	}
-	b.client.TLSConfig = tlsConfig
+
+	b.client = &fasthttp.Client{
+		MaxConnsPerHost:               int(c.numConns),
+		ReadTimeout:                   c.timeout,
+		WriteTimeout:                  c.timeout,
+		DisableHeaderNamesNormalizing: true,
+		TLSConfig:                     tlsConfig,
+	}
 
 	b.workers.Add(int(c.numConns))
 	b.errors = newErrorMap()
@@ -108,7 +109,9 @@ func (b *bombardier) prepareRequest() (*fasthttp.Request, *fasthttp.Response) {
 	return req, resp
 }
 
-func (b *bombardier) fireRequest(req *fasthttp.Request, resp *fasthttp.Response) (bytesData, bytesTotal int64, code int, msTaken uint64) {
+func (b *bombardier) fireRequest(
+	req *fasthttp.Request, resp *fasthttp.Response,
+) (bytesData, bytesTotal int64, code int, msTaken uint64) {
 	start := time.Now()
 	err := b.client.Do(req, resp)
 	if err != nil {
@@ -123,12 +126,16 @@ func (b *bombardier) fireRequest(req *fasthttp.Request, resp *fasthttp.Response)
 	return
 }
 
-func (b *bombardier) releaseRequest(req *fasthttp.Request, resp *fasthttp.Response) {
+func (b *bombardier) releaseRequest(
+	req *fasthttp.Request, resp *fasthttp.Response,
+) {
 	fasthttp.ReleaseRequest(req)
 	fasthttp.ReleaseResponse(resp)
 }
 
-func (b *bombardier) writeStatistics(bytesData, bytesTotal int64, code int, msTaken uint64) {
+func (b *bombardier) writeStatistics(
+	bytesData, bytesTotal int64, code int, msTaken uint64,
+) {
 	b.latencies.record(msTaken)
 	atomic.AddInt64(&b.bytesTotal, bytesTotal)
 	atomic.AddInt64(&b.bytesData, bytesData)
@@ -153,12 +160,16 @@ func (b *bombardier) writeStatistics(bytesData, bytesTotal int64, code int, msTa
 	atomic.AddUint64(counter, 1)
 }
 
+func (b *bombardier) performSingleRequest() {
+	req, resp := b.prepareRequest()
+	bytesData, bytesTotal, code, msTaken := b.fireRequest(req, resp)
+	b.releaseRequest(req, resp)
+	b.writeStatistics(bytesData, bytesTotal, code, msTaken)
+}
+
 func (b *bombardier) worker() {
 	for b.barrier.tryGrabWork() {
-		req, resp := b.prepareRequest()
-		bytesData, bytesTotal, code, msTaken := b.fireRequest(req, resp)
-		b.releaseRequest(req, resp)
-		b.writeStatistics(bytesData, bytesTotal, code, msTaken)
+		b.performSingleRequest()
 	}
 }
 
@@ -235,10 +246,10 @@ func (b *bombardier) throughput() float64 {
 }
 
 func (b *bombardier) printIntro() {
-	if b.conf.testType == counted {
+	if b.conf.testType() == counted {
 		fmt.Fprintf(b.out, "Bombarding %v with %v requests using %v connections\n",
 			b.conf.url, *b.conf.numReqs, b.conf.numConns)
-	} else if b.conf.testType == timed {
+	} else if b.conf.testType() == timed {
 		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connections\n",
 			b.conf.url, *b.conf.duration, b.conf.numConns)
 	}
@@ -250,13 +261,15 @@ func (b *bombardier) printLatencyStats() {
 	for i := 0; i < len(percentiles); i++ {
 		p := percentiles[i]
 		n := b.latencies.percentile(p)
-		fmt.Fprintf(b.out, "     %2.0f%% %10s", p, formatUnits(float64(n), timeUnitsUs, 2))
+		fmt.Fprintf(b.out, "     %2.0f%% %10s",
+			p, formatUnits(float64(n), timeUnitsUs, 2))
 		fmt.Fprintf(b.out, "\n")
 	}
 }
 
 func (b *bombardier) printStats() {
-	fmt.Fprintf(b.out, "%10v %10v %10v %10v\n", "Statistics", "Avg", "Stdev", "Max")
+	fmt.Fprintf(b.out, "%10v %10v %10v %10v\n",
+		"Statistics", "Avg", "Stdev", "Max")
 	fmt.Fprintln(b.out, rpsString(b.requests))
 	fmt.Fprintln(b.out, latenciesString(b.latencies))
 	if b.conf.printLatencies {
@@ -272,7 +285,8 @@ func (b *bombardier) printStats() {
 			fmt.Fprintf(b.out, "    %10v - %v\n", err, *count)
 		}
 	}
-	fmt.Fprintf(b.out, "  %-10v %10v/s\n", "Throughput:", formatBinary(b.throughput()))
+	fmt.Fprintf(b.out, "  %-10v %10v/s\n",
+		"Throughput:", formatBinary(b.throughput()))
 }
 
 func (b *bombardier) redirectOutputTo(out io.Writer) {

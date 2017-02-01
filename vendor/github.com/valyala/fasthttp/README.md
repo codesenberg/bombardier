@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/valyala/fasthttp.svg)](https://travis-ci.org/valyala/fasthttp)
 [![GoDoc](https://godoc.org/github.com/valyala/fasthttp?status.svg)](http://godoc.org/github.com/valyala/fasthttp)
-[![Go Report](http://goreportcard.com/badge/valyala/fasthttp)](http://goreportcard.com/report/valyala/fasthttp)
+[![Go Report](https://goreportcard.com/badge/github.com/valyala/fasthttp)](https://goreportcard.com/report/github.com/valyala/fasthttp)
 
 # fasthttp
 Fast HTTP implementation for Go.
@@ -278,7 +278,7 @@ with fasthttp support:
   * [Iris](https://github.com/kataras/iris)
   * [fasthttp-routing](https://github.com/qiangxue/fasthttp-routing)
   * [fasthttprouter](https://github.com/buaazp/fasthttprouter)
-  * [echo v2](https://github.com/labstack/echo)
+  * [lu](https://github.com/vincentLiuxiang/lu)
 
   Net/http code with simple ServeMux is trivially converted to fasthttp code:
 
@@ -486,8 +486,8 @@ uintBuf := fasthttp.AppendUint(nil, 1234)
     powerful routing package for fasthttp servers.
   * [fasthttprouter](https://github.com/buaazp/fasthttprouter) - a high
     performance fasthttp request router that scales well.
-  * [echo](https://github.com/labstack/echo) - fast and unfancy HTTP server
-    framework with fasthttp support.
+  * [lu](https://github.com/vincentLiuxiang/lu) - a high performance
+    go middleware web framework which is based on fasthttp.
   * [websocket](https://github.com/leavengood/websocket) - Gorilla-based
     websocket implementation for fasthttp.
 
@@ -558,7 +558,7 @@ uintBuf := fasthttp.AppendUint(nil, 1234)
     * [Iris](https://github.com/kataras/iris)
     * [fasthttp-routing](https://github.com/qiangxue/fasthttp-routing)
     * [fasthttprouter](https://github.com/buaazp/fasthttprouter)
-    * [echo v2](https://github.com/labstack/echo)
+    * [lu](https://github.com/vincentLiuxiang/lu)
 
   See also [this issue](https://github.com/valyala/fasthttp/issues/9) for more info.
 

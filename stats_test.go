@@ -126,27 +126,26 @@ func TestStatsPercentile(t *testing.T) {
 	}
 }
 
-func TestStatsRpsString(t *testing.T) {
-	max := uint64(100)
+var singleValueStats = func(max, val uint64) *stats {
 	s := newStats(max)
-	s.record(50)
-	expected := "  Reqs/sec        50.00       0.00         50"
-	if actual := rpsString(s); actual != expected {
-		t.Log("\"" + expected + "\"")
-		t.Log("\"" + actual + "\"")
-		t.Fail()
-	}
+	s.record(val)
+	return s
 }
 
-func TestStatsLatenciesString(t *testing.T) {
-	max := uint64(100)
-	s := newStats(max)
-	s.record(50)
-	expected := "  Latency       50.00us     0.00us    50.00us"
-	if actual := latenciesString(s); actual != expected {
-		t.Log("\"" + expected + "\"")
-		t.Log("\"" + actual + "\"")
-		t.Fail()
+func TestStatsToStringConversions(t *testing.T) {
+	s := singleValueStats(100, 50)
+	expectations := []struct {
+		actual, expected string
+	}{
+		{rpsString(s), "  Reqs/sec        50.00       0.00         50"},
+		{latenciesString(s), "  Latency       50.00us     0.00us    50.00us"},
+	}
+	for _, exp := range expectations {
+		if exp.actual != exp.expected {
+			t.Log("Wanted: \"" + exp.expected + "\"")
+			t.Log("Got: \"" + exp.actual + "\"")
+			t.Fail()
+		}
 	}
 }
 

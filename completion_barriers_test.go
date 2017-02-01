@@ -64,8 +64,7 @@ func TestTimeBarrierCancel(t *testing.T) {
 	select {
 	case <-b.done():
 		if c := b.completed(); c != 1.0 {
-			t.Log(c)
-			t.Fail()
+			t.Error(c)
 		}
 	case <-time.After(sleepTime * 2):
 		t.Fail()
@@ -82,8 +81,7 @@ func TestCountedBarrierCancel(t *testing.T) {
 	select {
 	case <-b.done():
 		if c := b.completed(); c != 1.0 {
-			t.Log(c)
-			t.Fail()
+			t.Error(c)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fail()

@@ -3,19 +3,26 @@ package main
 import (
 	"bytes"
 	"container/ring"
+	"crypto/tls"
+	"crypto/x509"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/valyala/fasthttp"
 )
 
 func TestBombardierShouldFireSpecifiedNumberOfRequests(t *testing.T) {
 	reqsReceived := uint64(0)
-	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		atomic.AddUint64(&reqsReceived, 1)
-	}))
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			atomic.AddUint64(&reqsReceived, 1)
+		}),
+	)
 	numReqs := uint64(100)
 	noHeaders := new(headersList)
 	b, e := newBombardier(config{
@@ -43,9 +50,11 @@ func TestBombardierShouldFinish(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 	reqsReceived := uint64(0)
-	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		atomic.AddUint64(&reqsReceived, 1)
-	}))
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			atomic.AddUint64(&reqsReceived, 1)
+		}),
+	)
 	noHeaders := new(headersList)
 	desiredTestDuration := 1 * time.Second
 	b, e := newBombardier(config{
@@ -83,13 +92,15 @@ func TestBombardierShouldSendHeaders(t *testing.T) {
 		{"Header1", "Value1"},
 		{"Header-Two", "value-two"},
 	})
-	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		for _, h := range requestHeaders {
-			if r.Header.Get(h.key) != h.value {
-				t.Fail()
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			for _, h := range requestHeaders {
+				if r.Header.Get(h.key) != h.value {
+					t.Fail()
+				}
 			}
-		}
-	}))
+		}),
+	)
 	numReqs := uint64(1)
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
@@ -117,13 +128,15 @@ func TestBombardierHttpCodeRecording(t *testing.T) {
 	}
 	codes = codes.Next()
 	var m sync.Mutex
-	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		m.Lock()
-		nextCode := codes.Value.(int)
-		codes = codes.Next()
-		m.Unlock()
-		rw.WriteHeader(nextCode)
-	}))
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			m.Lock()
+			nextCode := codes.Value.(int)
+			codes = codes.Next()
+			m.Unlock()
+			rw.WriteHeader(nextCode)
+		}),
+	)
 	eachCodeCount := uint64(10)
 	numReqs := uint64(n) * eachCodeCount
 	b, e := newBombardier(config{
@@ -155,17 +168,18 @@ func TestBombardierHttpCodeRecording(t *testing.T) {
 	}
 	for _, e := range expectation {
 		if e.reqsGot != e.expected {
-			t.Log(e.name, e.reqsGot, e.expected)
-			t.Fail()
+			t.Error(e.name, e.reqsGot, e.expected)
 		}
 	}
 }
 
 func TestBombardierTimeoutRecoding(t *testing.T) {
 	shortTimeout := 10 * time.Millisecond
-	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		time.Sleep(shortTimeout * 2)
-	}))
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			time.Sleep(shortTimeout * 2)
+		}),
+	)
 	numReqs := uint64(10)
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
@@ -190,13 +204,14 @@ func TestBombardierTimeoutRecoding(t *testing.T) {
 func TestBombardierThroughputRecording(t *testing.T) {
 	responseSize := 1024
 	response := bytes.Repeat([]byte{'a'}, responseSize)
-	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		_, err := rw.Write(response)
-		if err != nil {
-			t.Log(err)
-			t.Fail()
-		}
-	}))
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			_, err := rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
 	numReqs := uint64(10)
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
@@ -215,25 +230,26 @@ func TestBombardierThroughputRecording(t *testing.T) {
 	b.bombard()
 	bytesExpected := uint64(responseSize) * numReqs
 	if uint64(b.bytesData) != bytesExpected {
-		t.Log(b.bytesData, bytesExpected)
-		t.Fail()
+		t.Error(b.bytesData, bytesExpected)
 	}
-	if a, e := b.throughput(), float64(b.bytesTotal)/b.timeTaken.Seconds(); a != e {
-		t.Log(a, e)
-		t.Fail()
+	actual := b.throughput()
+	expected := float64(b.bytesTotal) / b.timeTaken.Seconds()
+	if actual != expected {
+		t.Error(actual, expected)
 	}
 }
 
 func TestBombardierStatsPrinting(t *testing.T) {
 	responseSize := 1024
 	response := bytes.Repeat([]byte{'a'}, responseSize)
-	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		_, err := rw.Write(response)
-		if err != nil {
-			t.Log(err)
-			t.Fail()
-		}
-	}))
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			_, err := rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
 	numReqs := uint64(10)
 	b, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
@@ -260,37 +276,6 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	}
 }
 
-// TODO(codesenberd): remove or rewrite
-// func BenchmarkFireRequest(bm *testing.B) {
-// 	longDuration := 9001 * time.Hour
-// 	b, e := newBombardier(config{
-// 		numConns:       defaultNumberOfConns,
-// 		numReqs:        nil,
-// 		duration:       &longDuration,
-// 		url:            "http://localhost:8080/",
-// 		headers:        new(headersList),
-// 		timeout:        defaultTimeout,
-// 		method:         "GET",
-// 		body:           "",
-// 		printLatencies: true,
-// 	})
-// 	if e != nil {
-// 		bm.Error(e)
-// 	}
-// 	b.disableOutput()
-// 	b.start = time.Now()
-// 	bm.ResetTimer()
-// 	go b.rateMeter()
-// 	bm.RunParallel(func(pb *testing.PB) {
-// 		for pb.Next() {
-// 			req, resp := b.prepareRequest()
-// 			bytesData, bytesTotal, code, msTaken := b.fireRequest(req, resp)
-// 			b.releaseRequest(req, resp)
-// 			b.writeStatistics(bytesData, bytesTotal, code, msTaken)
-// 		}
-// 	})
-// }
-
 func TestBombardierErrorIfFailToReadClientCert(t *testing.T) {
 	numReqs := uint64(10)
 	_, e := newBombardier(config{
@@ -308,5 +293,84 @@ func TestBombardierErrorIfFailToReadClientCert(t *testing.T) {
 	})
 	if e == nil {
 		t.Fail()
+	}
+}
+
+func TestBombardierClientCerts(t *testing.T) {
+	clientCert, err := tls.LoadX509KeyPair("testclient.cert", "testclient.key")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	x509Cert, err := x509.ParseCertificate(clientCert.Certificate[0])
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	server := fasthttp.Server{
+		DisableKeepalive: true,
+		Handler: func(ctx *fasthttp.RequestCtx) {
+			certs := ctx.TLSConnectionState().PeerCertificates
+			if numCerts := len(certs); numCerts != 1 {
+				t.Errorf("expected 1 cert, but got %v", numCerts)
+				ctx.Error("invalid number of certs", http.StatusBadRequest)
+				return
+			}
+
+			cert := certs[0]
+			if !cert.Equal(x509Cert) {
+				t.Error("certificates don't match")
+				ctx.Error("wrong cert", http.StatusBadRequest)
+				return
+			}
+
+			ctx.Success("text/plain; charset=utf-8", []byte("OK"))
+		},
+	}
+
+	ln, err := net.Listen("tcp", "localhost:8080")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	go func() {
+		serr := server.ServeTLS(ln, "testserver.cert", "testserver.key")
+		if serr != nil {
+			t.Error(err)
+		}
+	}()
+
+	numReqs := uint64(1)
+	b, e := newBombardier(config{
+		numConns:       defaultNumberOfConns,
+		numReqs:        &numReqs,
+		duration:       nil,
+		url:            "https://localhost:8080/",
+		headers:        new(headersList),
+		timeout:        defaultTimeout,
+		method:         "GET",
+		body:           "",
+		printLatencies: true,
+		certPath:       "testclient.cert",
+		keyPath:        "testclient.key",
+		insecure:       true,
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+
+	b.bombard()
+	if b.req2xx != 1 {
+		t.Error("no requests succeeded")
+	}
+
+	err = ln.Close()
+	if err != nil {
+		t.Error(err)
 	}
 }

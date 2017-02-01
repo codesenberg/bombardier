@@ -29,8 +29,7 @@ func TestArgsParsing(t *testing.T) {
 	}
 	for _, e := range expectations {
 		if _, err := e.p.parse(e.in); err != e.out {
-			t.Log(err, e.out)
-			t.Fail()
+			t.Error(err, e.out)
 		}
 	}
 }

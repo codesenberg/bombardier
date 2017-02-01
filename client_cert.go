@@ -2,8 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"net"
-	"net/url"
 )
 
 // readClientCert - helper function to read client certificate
@@ -28,20 +26,12 @@ func generateTLSConfig(c config) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	uri, err := url.ParseRequestURI(c.url)
-	if err != nil {
-		return nil, err
-	}
+	// Disable gas warning, because InsecureSkipVerify may be set to true
+	// for the purpose of testing
+	/* #nosec */
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: c.insecure,
 		Certificates:       certs,
-	}
-	if uri.Scheme == "https" {
-		host, _, err := net.SplitHostPort(uri.Host)
-		if err != nil {
-			host = uri.Host
-		}
-		tlsConfig.ServerName = host
 	}
 	return tlsConfig, nil
 }

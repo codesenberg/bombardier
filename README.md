@@ -1,19 +1,23 @@
-# bombardier
+# bombardier [![Build Status](https://travis-ci.org/codesenberg/bombardier.svg?branch=master)](https://travis-ci.org/codesenberg/bombardier) [![Go Report Card](https://goreportcard.com/badge/github.com/codesenberg/bombardier)](https://goreportcard.com/report/github.com/codesenberg/bombardier) [![GoDoc](https://godoc.org/github.com/codesenberg/bombardier?status.svg)](http://godoc.org/github.com/codesenberg/bombardier)
 bombardier is a HTTP(S) benchmarking tool. It is written in Go programming language and uses excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance.
+
+Tested on go1.6 and higher. Use go1.7+ for best performance.
 
 ##Installation
 You can grab the latest version in the [releases](https://github.com/codesenberg/bombardier/releases) section.
-Alternatively, just run `go get github.com/codesenberg/bombardier`.
+Alternatively, just run:
+
+`go get -u github.com/codesenberg/bombardier`.
 
 ##Usage
 Run it like:
 ```
-bombardier <options> <url>
+bombardier [options] <url>
 ```
 Also, you can supply these options:
 ```
   -H value
-        HTTP headers to use
+        HTTP headers to use(can be repeated)
   -c uint
         Maximum number of concurrent connections (default 125)
   -cert string

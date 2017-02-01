@@ -9,8 +9,8 @@ func TestGenerateTLSConfig(t *testing.T) {
 		errIsNil bool
 	}{
 		{
-			certPath: "test_cert.pem",
-			keyPath:  "test_key.pem",
+			certPath: "testclient.cert",
+			keyPath:  "testclient.key",
 			errIsNil: true,
 		},
 		{
@@ -25,10 +25,15 @@ func TestGenerateTLSConfig(t *testing.T) {
 		},
 	}
 	for _, e := range expectations {
-		_, r := generateTLSConfig(config{url: "https://doesnt.exist.com", certPath: e.certPath, keyPath: e.keyPath})
+		_, r := generateTLSConfig(
+			config{
+				url:      "https://doesnt.exist.com",
+				certPath: e.certPath,
+				keyPath:  e.keyPath,
+			},
+		)
 		if (r == nil) != e.errIsNil {
-			t.Log(e.certPath, e.keyPath, r)
-			t.Fail()
+			t.Error(e.certPath, e.keyPath, r)
 		}
 	}
 }

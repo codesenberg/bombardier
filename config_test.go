@@ -23,8 +23,7 @@ func TestCanHaveBody(t *testing.T) {
 	}
 	for _, e := range expectations {
 		if r := canHaveBody(e.in); r != e.out {
-			t.Log(e.in, e.out, r)
-			t.Fail()
+			t.Error(e.in, e.out, r)
 		}
 	}
 }
@@ -284,16 +283,21 @@ func TestCheckArgsTestType(t *testing.T) {
 		method:   "GET",
 		body:     "",
 	}
-	if err := countedConfig.checkArgs(); err != nil || countedConfig.testType != counted {
+	if err := countedConfig.checkArgs(); err != nil ||
+		countedConfig.testType() != counted {
 		t.Fail()
 	}
-	if err := timedConfig.checkArgs(); err != nil || timedConfig.testType != timed {
+	if err := timedConfig.checkArgs(); err != nil ||
+		timedConfig.testType() != timed {
 		t.Fail()
 	}
-	if err := both.checkArgs(); err != nil || both.testType != counted {
+	if err := both.checkArgs(); err != nil ||
+		both.testType() != counted {
 		t.Fail()
 	}
-	if err := defaultConfig.checkArgs(); err != nil || defaultConfig.testType != timed || defaultConfig.duration != &defaultTestDuration {
+	if err := defaultConfig.checkArgs(); err != nil ||
+		defaultConfig.testType() != timed ||
+		defaultConfig.duration != &defaultTestDuration {
 		t.Fail()
 	}
 }
@@ -351,7 +355,6 @@ func TestInvalidHTTPMethodError(t *testing.T) {
 	want := "Unknown HTTP method: " + invalidMethod
 	err := &invalidHTTPMethodError{invalidMethod}
 	if got := err.Error(); got != want {
-		t.Log(got, want)
-		t.Fail()
+		t.Error(got, want)
 	}
 }

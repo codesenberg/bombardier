@@ -1255,31 +1255,49 @@ func (h *ResponseHeader) tryRead(r *bufio.Reader, n int) error {
 		if n == 1 || err == io.EOF {
 			return io.EOF
 		}
+
+		// This is for go 1.6 bug. See https://github.com/golang/go/issues/14121 .
 		if err == bufio.ErrBufferFull {
-			err = bufferFullError(r)
+			return &ErrSmallBuffer{
+				error: fmt.Errorf("error when reading response headers: %s", errSmallBuffer),
+			}
 		}
+
 		return fmt.Errorf("error when reading response headers: %s", err)
 	}
-	isEOF := (err != nil)
 	b = mustPeekBuffered(r)
-	var headersLen int
-	if headersLen, err = h.parse(b); err != nil {
-		if err == errNeedMore {
-			if !isEOF {
-				return err
-			}
-
-			// Buggy servers may leave trailing CRLFs after response body.
-			// Treat this case as EOF.
-			if isOnlyCRLF(b) {
-				return io.EOF
-			}
-		}
-		bStart, bEnd := bufferStartEnd(b)
-		return fmt.Errorf("error when reading response headers: %s. buf=%q...%q", err, bStart, bEnd)
+	headersLen, errParse := h.parse(b)
+	if errParse != nil {
+		return headerError("response", err, errParse, b)
 	}
 	mustDiscard(r, headersLen)
 	return nil
+}
+
+func headerError(typ string, err, errParse error, b []byte) error {
+	if errParse != errNeedMore {
+		return headerErrorMsg(typ, errParse, b)
+	}
+	if err == nil {
+		return errNeedMore
+	}
+
+	// Buggy servers may leave trailing CRLFs after http body.
+	// Treat this case as EOF.
+	if isOnlyCRLF(b) {
+		return io.EOF
+	}
+
+	if err != bufio.ErrBufferFull {
+		return headerErrorMsg(typ, err, b)
+	}
+	return &ErrSmallBuffer{
+		error: headerErrorMsg(typ, errSmallBuffer, b),
+	}
+}
+
+func headerErrorMsg(typ string, err error, b []byte) error {
+	return fmt.Errorf("error when reading %s headers: %s. Buffer size=%d, contents: %s", typ, err, len(b), bufferSnippet(b))
 }
 
 // Read reads request header from r.
@@ -1308,44 +1326,26 @@ func (h *RequestHeader) tryRead(r *bufio.Reader, n int) error {
 		if n == 1 || err == io.EOF {
 			return io.EOF
 		}
+
+		// This is for go 1.6 bug. See https://github.com/golang/go/issues/14121 .
 		if err == bufio.ErrBufferFull {
-			err = bufferFullError(r)
+			return &ErrSmallBuffer{
+				error: fmt.Errorf("error when reading request headers: %s", errSmallBuffer),
+			}
 		}
+
 		return fmt.Errorf("error when reading request headers: %s", err)
 	}
-	isEOF := (err != nil)
 	b = mustPeekBuffered(r)
-	var headersLen int
-	if headersLen, err = h.parse(b); err != nil {
-		if err == errNeedMore {
-			if !isEOF {
-				return err
-			}
-
-			// Buggy clients may leave trailing CRLFs after the request body.
-			// Treat this case as EOF.
-			if isOnlyCRLF(b) {
-				return io.EOF
-			}
-		}
-		bStart, bEnd := bufferStartEnd(b)
-		return fmt.Errorf("error when reading request headers: %s. buf=%q...%q", err, bStart, bEnd)
+	headersLen, errParse := h.parse(b)
+	if errParse != nil {
+		return headerError("request", err, errParse, b)
 	}
 	mustDiscard(r, headersLen)
 	return nil
 }
 
-func bufferFullError(r *bufio.Reader) error {
-	n := r.Buffered()
-	b, err := r.Peek(n)
-	if err != nil {
-		panic(fmt.Sprintf("BUG: unexpected error returned from bufio.Reader.Peek(Buffered()): %s", err))
-	}
-	bStart, bEnd := bufferStartEnd(b)
-	return fmt.Errorf("headers exceed %d bytes. Increase ReadBufferSize. buf=%q...%q", n, bStart, bEnd)
-}
-
-func bufferStartEnd(b []byte) ([]byte, []byte) {
+func bufferSnippet(b []byte) string {
 	n := len(b)
 	start := 200
 	end := n - start
@@ -1353,7 +1353,11 @@ func bufferStartEnd(b []byte) ([]byte, []byte) {
 		start = n
 		end = n
 	}
-	return b[:start], b[end:]
+	bStart, bEnd := b[:start], b[end:]
+	if len(bEnd) == 0 {
+		return fmt.Sprintf("%q", b)
+	}
+	return fmt.Sprintf("%q...%q", bStart, bEnd)
 }
 
 func isOnlyCRLF(b []byte) bool {
@@ -2048,7 +2052,19 @@ func AppendNormalizedHeaderKeyBytes(dst, key []byte) []byte {
 	return AppendNormalizedHeaderKey(dst, b2s(key))
 }
 
-var errNeedMore = errors.New("need more data: cannot find trailing lf")
+var (
+	errNeedMore    = errors.New("need more data: cannot find trailing lf")
+	errSmallBuffer = errors.New("small read buffer. Increase ReadBufferSize")
+)
+
+// ErrSmallBuffer is returned when the provided buffer size is too small
+// for reading request and/or response headers.
+//
+// ReadBufferSize value from Server or clients should reduce the number
+// of such errors.
+type ErrSmallBuffer struct {
+	error
+}
 
 func mustPeekBuffered(r *bufio.Reader) []byte {
 	buf, err := r.Peek(r.Buffered())
