@@ -3,28 +3,28 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "wmKDujdXJPUjA99iE0nubi8pQs0=",
+			"checksumSHA1": "9Y8RN+O2y4mwdRrvKJotr2ieCpk=",
 			"path": "github.com/cheggaaa/pb",
-			"revision": "ad4efe000aa550bb54918c06ebbadc0ff17687b9",
-			"revisionTime": "2016-09-05T07:23:56Z"
+			"revision": "d7e6ca3010b6f084d8056847f55d7f572f180678",
+			"revisionTime": "2016-11-21T09:29:06Z"
 		},
 		{
-			"checksumSHA1": "Gn6fYXMv/8s/m1zEYHkEysuusr8=",
+			"checksumSHA1": "AvontxHAJNWDzPY3gn+EyjAPV8Q=",
 			"path": "github.com/klauspost/compress/flate",
-			"revision": "9d711f4445beb7f6488148ce04e3b4dc6e72242d",
-			"revisionTime": "2016-03-24T10:56:39Z"
+			"revision": "461e8fd8397ae84a23f56e385801e4feda2048ce",
+			"revisionTime": "2017-01-14T13:08:32Z"
 		},
 		{
-			"checksumSHA1": "1wlhFFyKKkoL3X/S4TdT6vRQgfA=",
+			"checksumSHA1": "V1lQwkoDR1fPmZBSgkmZjgZofeU=",
 			"path": "github.com/klauspost/compress/gzip",
-			"revision": "9d711f4445beb7f6488148ce04e3b4dc6e72242d",
-			"revisionTime": "2016-03-24T10:56:39Z"
+			"revision": "461e8fd8397ae84a23f56e385801e4feda2048ce",
+			"revisionTime": "2017-01-14T13:08:32Z"
 		},
 		{
-			"checksumSHA1": "c0whSqlQKReeCty0nP52+HiTh5c=",
+			"checksumSHA1": "+azPXaZpPF14YHRghNAer13ThQU=",
 			"path": "github.com/klauspost/compress/zlib",
-			"revision": "9d711f4445beb7f6488148ce04e3b4dc6e72242d",
-			"revisionTime": "2016-03-24T10:56:39Z"
+			"revision": "461e8fd8397ae84a23f56e385801e4feda2048ce",
+			"revisionTime": "2017-01-14T13:08:32Z"
 		},
 		{
 			"checksumSHA1": "4NJpn9HW2Rh1i+wD5hYQLY94wDI=",
@@ -33,40 +33,40 @@
 			"revisionTime": "2016-03-02T07:53:16Z"
 		},
 		{
-			"checksumSHA1": "GzRhW6f3yGSR0t2+qde/aHROdEQ=",
+			"checksumSHA1": "LbmRbzhBxCids27O154MBqbgQ5Y=",
 			"path": "github.com/klauspost/crc32",
-			"revision": "19b0b332c9e4516a6370a0456e6182c3b5036720",
-			"revisionTime": "2016-02-19T14:26:09Z"
+			"revision": "cb6bfca970f6908083f26f39a79009d608efd5cd",
+			"revisionTime": "2016-10-16T15:41:25Z"
 		},
 		{
-			"checksumSHA1": "6PYadUXFejeiAT7HUKoQe14EOqc=",
-			"path": "github.com/olekukonko/ts",
-			"revision": "ecf753e7c962639ab5a1fb46f7da627d4c0a04b8",
-			"revisionTime": "2014-04-12T22:01:45Z"
+			"checksumSHA1": "MNkKJyk2TazKMJYbal5wFHybpyA=",
+			"path": "github.com/mattn/go-runewidth",
+			"revision": "14207d285c6c197daabb5c9793d63e7af9ab2d50",
+			"revisionTime": "2017-02-01T02:35:40Z"
 		},
 		{
-			"checksumSHA1": "CwE3RS09k9xl33pJQBf0BaLHCBQ=",
+			"checksumSHA1": "VCNCWOWM96WHwPmr/f4QhnszNGE=",
 			"path": "github.com/valyala/bytebufferpool",
-			"revision": "8ebd0474e5a2f0a5c7a74ad2bf421a1d1a90264f",
-			"revisionTime": "2016-07-12T06:12:50Z"
+			"revision": "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7",
+			"revisionTime": "2016-08-17T18:16:52Z"
 		},
 		{
-			"checksumSHA1": "s2kUIhVHxIk7xSbTFHSEsF1Mo/E=",
+			"checksumSHA1": "FLwwo6xSPTxfslxtHur3rObQGIc=",
 			"path": "github.com/valyala/fasthttp",
-			"revision": "82894ea1e876681803241ff69553f436e2231385",
-			"revisionTime": "2016-12-14T11:51:36Z"
+			"revision": "b69eba7101fa6c66ba4db0641968a401c9f4f148",
+			"revisionTime": "2017-01-30T17:47:15Z"
 		},
 		{
-			"checksumSHA1": "ieh1CFo/3HC2jWcpnQTjwdPvoek=",
+			"checksumSHA1": "5uRoLFE7IJG1AWHQ6q4wAs2V8Vg=",
 			"path": "github.com/valyala/fasthttp/fasthttputil",
-			"revision": "881ac52b00ef21896de49a8aa185467c8a9ae49c",
-			"revisionTime": "2016-07-16T14:36:32Z"
+			"revision": "b69eba7101fa6c66ba4db0641968a401c9f4f148",
+			"revisionTime": "2017-01-30T17:47:15Z"
 		},
 		{
 			"checksumSHA1": "HxVXqzvvT7u4OssX7OeOiKlClZU=",
 			"path": "github.com/valyala/fasthttp/stackless",
-			"revision": "82894ea1e876681803241ff69553f436e2231385",
-			"revisionTime": "2016-12-14T11:51:36Z"
+			"revision": "b69eba7101fa6c66ba4db0641968a401c9f4f148",
+			"revisionTime": "2017-01-30T17:47:15Z"
 		}
 	],
 	"rootPath": "codesenberg/bombardier"
