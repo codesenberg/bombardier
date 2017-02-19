@@ -5,6 +5,7 @@ import (
 	"container/ring"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -120,10 +121,10 @@ func TestBombardierShouldSendHeaders(t *testing.T) {
 }
 
 func TestBombardierHttpCodeRecording(t *testing.T) {
-	n := 7
-	codes := ring.New(n)
-	for i := 0; i < n; i++ {
-		codes.Value = i*100 + 1
+	cs := []int{1, 101, 201, 301, 401, 501, 601}
+	codes := ring.New(len(cs))
+	for _, v := range cs {
+		codes.Value = v
 		codes = codes.Next()
 	}
 	codes = codes.Next()
@@ -138,7 +139,7 @@ func TestBombardierHttpCodeRecording(t *testing.T) {
 		}),
 	)
 	eachCodeCount := uint64(10)
-	numReqs := uint64(n) * eachCodeCount
+	numReqs := uint64(len(cs)) * eachCodeCount
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
 		numReqs:  &numReqs,
@@ -265,6 +266,8 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	if e != nil {
 		t.Error(e)
 	}
+	dummy := errors.New("dummy error")
+	b.errors.add(dummy)
 	b.disableOutput()
 	out := new(bytes.Buffer)
 	b.redirectOutputTo(out)

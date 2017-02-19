@@ -281,8 +281,8 @@ func (b *bombardier) printStats() {
 	fmt.Fprintf(b.out, "    others - %v\n", b.others)
 	if b.errors.sum() > 0 {
 		fmt.Fprintln(b.out, "  Errors:")
-		for err, count := range b.errors.m {
-			fmt.Fprintf(b.out, "    %10v - %v\n", err, *count)
+		for _, entry := range b.errors.byFrequency() {
+			fmt.Fprintf(b.out, "    %10v - %v\n", entry.error, entry.count)
 		}
 	}
 	fmt.Fprintf(b.out, "  %-10v %10v/s\n",
@@ -304,8 +304,6 @@ const (
 	requestsInterval = 100 * time.Millisecond
 	defaultTimeout   = 2 * time.Second
 
-	programName = "bombardier"
-
 	exitFailure = 1
 )
 
@@ -313,7 +311,6 @@ func main() {
 	cfg, err := parser.parse(os.Args)
 	if err != nil {
 		fmt.Println(err)
-		parser.usage(os.Stdout)
 		os.Exit(exitFailure)
 	}
 	bombardier, err := newBombardier(cfg)

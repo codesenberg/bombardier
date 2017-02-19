@@ -3,6 +3,32 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "iHh6qNupZ/NhakDhYuf+0KVRDb0=",
+			"path": "github.com/alecthomas/kingpin",
+			"revision": "e9044be3ab2a8e11d4e1f418d12f0790d57e8d70",
+			"revisionTime": "2016-08-29T10:30:05Z",
+			"version": "v2",
+			"versionExact": "v2.2.3"
+		},
+		{
+			"checksumSHA1": "KmjnydoAbofMieIWm+it5OWERaM=",
+			"path": "github.com/alecthomas/template",
+			"revision": "a0175ee3bccc567396460bf5acd36800cb10c49c",
+			"revisionTime": "2016-04-05T07:15:01Z"
+		},
+		{
+			"checksumSHA1": "3wt0pTXXeS+S93unwhGoLIyGX/Q=",
+			"path": "github.com/alecthomas/template/parse",
+			"revision": "a0175ee3bccc567396460bf5acd36800cb10c49c",
+			"revisionTime": "2016-04-05T07:15:01Z"
+		},
+		{
+			"checksumSHA1": "fCc3grA7vIxfBru7R3SqjcW+oLI=",
+			"path": "github.com/alecthomas/units",
+			"revision": "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a",
+			"revisionTime": "2015-10-22T06:55:26Z"
+		},
+		{
 			"checksumSHA1": "9Y8RN+O2y4mwdRrvKJotr2ieCpk=",
 			"path": "github.com/cheggaaa/pb",
 			"revision": "d7e6ca3010b6f084d8056847f55d7f572f180678",

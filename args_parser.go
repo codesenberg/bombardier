@@ -1,25 +1,29 @@
 package main
 
 import (
-	"errors"
-	"flag"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
+	"strconv"
 	"time"
+
+	"github.com/alecthomas/kingpin"
+)
+
+const (
+	decBase = 10
 )
 
 var (
-	errNoURL       = errors.New("No URL supplied")
-	errTooManyArgs = errors.New("Too many arguments are supplied")
-
 	emptyConf = config{}
-	parser    = newDefaultParser()
+	parser    = newKingpinParser()
 )
 
-type defaultParser struct {
-	fs *flag.FlagSet
+type argsParser interface {
+	parse([]string) (config, error)
+}
+
+type kingpinParser struct {
+	app *kingpin.Application
+
+	url string
 
 	numReqs   *nullableUint64
 	duration  *nullableDuration
@@ -34,71 +38,92 @@ type defaultParser struct {
 	keyPath   string
 }
 
-func newDefaultParser() *defaultParser {
-	dp := new(defaultParser)
-	dp.fs = flag.NewFlagSet(programName, flag.ContinueOnError)
-	dp.numReqs = new(nullableUint64)
-	dp.duration = new(nullableDuration)
-	dp.headers = new(headersList)
-	dp.fs.Uint64Var(&dp.numConns, "c", defaultNumberOfConns,
-		"Maximum number of concurrent connections")
-	dp.fs.DurationVar(&dp.timeout, "timeout", defaultTimeout,
-		"Socket/request timeout")
-	dp.fs.BoolVar(&dp.latencies, "latencies", false,
-		"Print latency statistics")
-	dp.fs.StringVar(&dp.method, "m", "GET",
-		"Request method")
-	dp.fs.StringVar(&dp.body, "data", "",
-		"Request body")
-	dp.fs.StringVar(&dp.certPath, "cert", "",
-		"Path to the client's TLS Certificate")
-	dp.fs.StringVar(&dp.keyPath, "key", "",
-		"Path to the client's TLS Certificate Private Key")
-	dp.fs.BoolVar(&dp.insecure, "insecure", false,
+func newKingpinParser() argsParser {
+	kparser := &kingpinParser{
+		numReqs:   new(nullableUint64),
+		duration:  new(nullableDuration),
+		headers:   new(headersList),
+		numConns:  defaultNumberOfConns,
+		timeout:   defaultTimeout,
+		latencies: false,
+		method:    "GET",
+		body:      "",
+		certPath:  "",
+		keyPath:   "",
+		insecure:  false,
+		url:       "",
+	}
+
+	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool")
+	app.Flag("connections", "Maximum number of concurrent connections").
+		Short('c').
+		PlaceHolder(strconv.FormatUint(defaultNumberOfConns, decBase)).
+		Uint64Var(&kparser.numConns)
+	app.Flag("timeout", "Socket/request timeout").
+		PlaceHolder(defaultTimeout.String()).
+		Short('t').
+		DurationVar(&kparser.timeout)
+	app.Flag("latencies", "Print latency statistics").
+		Short('l').
+		BoolVar(&kparser.latencies)
+	app.Flag("method", "Request method").
+		PlaceHolder("GET").
+		Short('m').
+		StringVar(&kparser.method)
+	app.Flag("body", "Request body").
+		Default("").
+		Short('b').
+		StringVar(&kparser.body)
+	app.Flag("cert", "Path to the client's TLS Certificate").
+		Default("").
+		StringVar(&kparser.certPath)
+	app.Flag("key", "Path to the client's TLS Certificate Private Key").
+		Default("").
+		StringVar(&kparser.keyPath)
+	app.Flag("insecure",
 		"Controls whether a client verifies the server's certificate"+
-			" chain and host name")
-	dp.fs.Var(dp.headers, "H", "HTTP headers to use(can be repeated)")
-	dp.fs.Var(dp.numReqs, "n", "Number of requests")
-	dp.fs.Var(dp.duration, "d", "Duration of test")
-	return dp
+			" chain and host name").
+		Short('k').
+		BoolVar(&kparser.insecure)
+
+	app.Flag("header", "HTTP headers to use(can be repeated)").
+		PlaceHolder("[]").
+		Short('H').
+		SetValue(kparser.headers)
+	app.Flag("requests", "Number of requests").
+		PlaceHolder("[<pos. int.>]").
+		Short('n').
+		SetValue(kparser.numReqs)
+	app.Flag("duration", "Duration of test").
+		PlaceHolder(defaultTestDuration.String()).
+		Short('d').
+		SetValue(kparser.duration)
+
+	app.Arg("url", "Target's URL").Required().
+		StringVar(&kparser.url)
+
+	kparser.app = app
+	return argsParser(kparser)
 }
 
-func (p *defaultParser) usage(out io.Writer) {
-	fmt.Fprintln(out, programName, "[options] <url>")
-	p.fs.SetOutput(out)
-	p.fs.PrintDefaults()
-}
-
-func (p *defaultParser) parse(args []string) (config, error) {
-	err := p.parseArgs(args)
+func (k *kingpinParser) parse(args []string) (config, error) {
+	k.app.Name = args[0]
+	_, err := k.app.Parse(args[1:])
 	if err != nil {
 		return emptyConf, err
 	}
-	if p.fs.NArg() == 0 {
-		return emptyConf, errNoURL
-	}
-	if p.fs.NArg() > 1 {
-		return emptyConf, errTooManyArgs
-	}
 	return config{
-		numConns:       p.numConns,
-		numReqs:        p.numReqs.val,
-		duration:       p.duration.val,
-		url:            p.fs.Arg(0),
-		headers:        p.headers,
-		timeout:        p.timeout,
-		method:         p.method,
-		body:           p.body,
-		keyPath:        p.keyPath,
-		certPath:       p.certPath,
-		printLatencies: p.latencies,
-		insecure:       p.insecure,
+		numConns:       k.numConns,
+		numReqs:        k.numReqs.val,
+		duration:       k.duration.val,
+		url:            k.url,
+		headers:        k.headers,
+		timeout:        k.timeout,
+		method:         k.method,
+		body:           k.body,
+		keyPath:        k.keyPath,
+		certPath:       k.certPath,
+		printLatencies: k.latencies,
+		insecure:       k.insecure,
 	}, nil
-}
-
-func (p *defaultParser) parseArgs(args []string) error {
-	p.fs.SetOutput(ioutil.Discard)
-	err := p.fs.Parse(args[1:])
-	p.fs.SetOutput(os.Stdout)
-	return err
 }

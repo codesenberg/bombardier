@@ -10,67 +10,66 @@ Alternatively, just run:
 `go get -u github.com/codesenberg/bombardier`.
 
 ##Usage
-Run it like:
 ```
-bombardier [options] <url>
+bombardier [<flags>] <url>
 ```
-Also, you can supply these options:
+
+Flags:
 ```
-  -H value
-        HTTP headers to use(can be repeated)
-  -c uint
-        Maximum number of concurrent connections (default 125)
-  -cert string
-        Path to the client's TLS Certificate
-  -d value
-        Duration of test
-  -data string
-        Request body
-  -insecure
-        Controls whether a client verifies the server's certificate chain and host name (default true)
-  -key string
-        Path to the client's TLS Certificate Private Key
-  -latencies
-        Print latency statistics
-  -m string
-        Request method (default "GET")
-  -n value
-        Number of requests
-  -timeout duration
-        Socket/request timeout (default 2s)
+      --help                    Show context-sensitive help (also try
+                                --help-long and --help-man).
+  -c, --connections=125         Maximum number of concurrent connections
+  -t, --timeout=2s              Socket/request timeout
+  -l, --latencies               Print latency statistics
+  -m, --method=GET              Request method
+  -b, --body=""                 Request body
+      --cert=""                 Path to the client's TLS Certificate
+      --key=""                  Path to the client's TLS Certificate Private Key
+
+  -k, --insecure                Controls whether a client verifies the server's
+                                certificate chain and host name
+  -H, --headers=[] ...          HTTP headers to use(can be repeated)
+  -n, --requests=[<pos. int.>]  Number of requests
+  -d, --duration=10s            Duration of test
 ```
-To set multiple headers just repeat the H flag, like so:
+Args:
+```
+  <url>  Target's URL
+```
+To set multiple headers just repeat the `H` flag, like so:
 ```
 bombardier -H 'First: Value1' -H 'Second: Value2' -H 'Third: Value3' http://somehost:8080
 ```
-You should see something like this if you done everything correctly:
+Example of running `bombardier` against [this server](https://godoc.org/github.com/codesenberg/bombardier/cmd/utils/simplebenchserver):
 ```
 > bombardier -c 125 -n 10000000 http://localhost:8080
 Bombarding http://localhost:8080 with 10000000 requests using 125 connections
-10000000 / 10000000 [============================================] 100.00 % 40s Done!
+ 10000000 / 10000000 [============================================] 100.00% 37s Done!
 Statistics        Avg      Stdev        Max
-  Reqs/sec    246782.00   11798.53     257026
-  Latency      505.00us   516.77us    51.00ms
+  Reqs/sec    264560.00   10733.06     268434
+  Latency      471.00us   522.34us    51.00ms
   HTTP codes:
     1xx - 0, 2xx - 10000000, 3xx - 0, 4xx - 0, 5xx - 0
     others - 0
-  Throughput:   273.22MB/s
+  Throughput:   292.92MB/s
 ```
-Or, on a realworld server(with latency distribution):
+Or, against a realworld server(with latency distribution):
 ```
-> bombardier -c 200 -d 10s --latencies http://google.com
-Bombarding http://google.com for 10s using 200 connections
-[==========================================================================]10s Done!
+> bombardier -c 200 -d 10s -l http://ya.ru
+Bombarding http://ya.ru for 10s using 200 connections
+[=========================================================================] 10s Done!
 Statistics        Avg      Stdev        Max
-  Reqs/sec      5384.00     789.97       5699
-  Latency       36.96ms    19.58ms      1.44s
+  Reqs/sec      6607.00     524.56       7109
+  Latency       29.86ms     5.36ms   305.02ms
   Latency Distribution
-     50%    34.00ms
-     75%    41.00ms
-     90%    42.00ms
-     99%    45.00ms
+     50%    28.00ms
+     75%    32.00ms
+     90%    34.00ms
+     99%    48.00ms
   HTTP codes:
-    1xx - 0, 2xx - 0, 3xx - 54083, 4xx - 0, 5xx - 0
-    errored - 2
-  Throughput:     2.51MB/s
+    1xx - 0, 2xx - 0, 3xx - 66561, 4xx - 0, 5xx - 0
+    others - 5
+  Errors:
+    dialing to the given TCP address timed out - 5
+  Throughput:     3.06MB/s
 ```

@@ -22,6 +22,10 @@ func (h *headersList) String() string {
 	return fmt.Sprint(*h)
 }
 
+func (h *headersList) IsCumulative() bool {
+	return true
+}
+
 func (h *headersList) Set(value string) error {
 	res := strings.SplitN(value, ":", 2)
 	if len(res) != 2 {

@@ -2,9 +2,9 @@
 Simple HTTP server used for benchmarking.
 
 Following options are available:
-  -port string
-        port to use for benchmarks (default "8080")
-  -size uint
-        size of response in bytes (default 1024)
+      --help         Show context-sensitive help (also try --help-long and
+                     --help-man).
+  -p, --port="8080"  port to use for benchmarks
+  -s, --size=1024    size of response in bytes
 */
 package main

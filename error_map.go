@@ -1,6 +1,8 @@
 package main
 
 import (
+	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -52,4 +54,39 @@ func (e *errorMap) sum() uint64 {
 		sum += *v
 	}
 	return sum
+}
+
+type errorWithCount struct {
+	error string
+	count uint64
+}
+
+func (ewc *errorWithCount) String() string {
+	return "<" + ewc.error + ":" +
+		strconv.FormatUint(ewc.count, decBase) + ">"
+}
+
+type errorsByFrequency []*errorWithCount
+
+func (ebf errorsByFrequency) Len() int {
+	return len(ebf)
+}
+
+func (ebf errorsByFrequency) Less(i, j int) bool {
+	return ebf[i].count > ebf[j].count
+}
+
+func (ebf errorsByFrequency) Swap(i, j int) {
+	ebf[i], ebf[j] = ebf[j], ebf[i]
+}
+
+func (e *errorMap) byFrequency() errorsByFrequency {
+	e.mu.RLock()
+	byFreq := make(errorsByFrequency, 0, len(e.m))
+	for err, count := range e.m {
+		byFreq = append(byFreq, &errorWithCount{err, *count})
+	}
+	e.mu.RUnlock()
+	sort.Sort(byFreq)
+	return byFreq
 }

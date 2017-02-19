@@ -1,18 +1,24 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"strings"
 
+	"github.com/alecthomas/kingpin"
 	"github.com/valyala/fasthttp"
 )
 
-var serverPort = flag.String("port", "8080", "port to use for benchmarks")
-var responseSize = flag.Uint("size", 1024, "size of response in bytes")
+var serverPort = kingpin.Flag("port", "port to use for benchmarks").
+	Default("8080").
+	Short('p').
+	String()
+var responseSize = kingpin.Flag("size", "size of response in bytes").
+	Default("1024").
+	Short('s').
+	Uint()
 
 func main() {
-	flag.Parse()
+	kingpin.Parse()
 	response := strings.Repeat("a", int(*responseSize))
 	addr := "localhost:" + *serverPort
 	log.Println("Starting HTTP server on:", addr)
