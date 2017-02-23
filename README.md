@@ -7,7 +7,7 @@ Tested on go1.6 and higher. Use go1.7+ for best performance.
 You can grab the latest version in the [releases](https://github.com/codesenberg/bombardier/releases) section.
 Alternatively, just run:
 
-`go get -u github.com/codesenberg/bombardier`.
+`go get -u github.com/codesenberg/bombardier`
 
 ##Usage
 ```
