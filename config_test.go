@@ -64,7 +64,7 @@ func TestCheckArgs(t *testing.T) {
 				numConns: defaultNumberOfConns,
 				numReqs:  &defaultNumberOfReqs,
 				duration: &defaultTestDuration,
-				url:      "localhost:8080",
+				url:      "ftp://localhost:8080",
 				headers:  noHeaders,
 				timeout:  defaultTimeout,
 				method:   "GET",
@@ -356,5 +356,26 @@ func TestInvalidHTTPMethodError(t *testing.T) {
 	err := &invalidHTTPMethodError{invalidMethod}
 	if got := err.Error(); got != want {
 		t.Error(got, want)
+	}
+}
+
+func TestParsingOfURLsWithoutScheme(t *testing.T) {
+	c := config{
+		numConns: defaultNumberOfConns,
+		numReqs:  nil,
+		duration: nil,
+		url:      "localhost:8080",
+		headers:  new(headersList),
+		timeout:  defaultTimeout,
+		method:   "GET",
+		body:     "",
+	}
+	if err := c.checkArgs(); err != nil {
+		t.Error(err)
+		return
+	}
+	exp := "http://localhost:8080"
+	if act := c.url; act != exp {
+		t.Error(exp, act)
 	}
 }

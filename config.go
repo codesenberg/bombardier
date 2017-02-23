@@ -3,10 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"sort"
 	"time"
 
+	"github.com/goware/urlx"
 	"github.com/valyala/fasthttp"
 )
 
@@ -106,13 +106,14 @@ func (c *config) testType() testTyp {
 }
 
 func (c *config) checkURL() error {
-	url, err := url.ParseRequestURI(c.url)
+	url, err := urlx.Parse(c.url)
 	if err != nil {
 		return err
 	}
 	if url.Host == "" || (url.Scheme != "http" && url.Scheme != "https") {
 		return errInvalidURL
 	}
+	c.url = url.String()
 	return nil
 }
 
