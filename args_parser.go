@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"strconv"
 	"time"
 
@@ -54,7 +55,9 @@ func newKingpinParser() argsParser {
 		url:       "",
 	}
 
-	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool")
+	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
+		Version("bombardier version " + version + " " + runtime.GOOS + "/" +
+			runtime.GOARCH)
 	app.Flag("connections", "Maximum number of concurrent connections").
 		Short('c').
 		PlaceHolder(strconv.FormatUint(defaultNumberOfConns, decBase)).

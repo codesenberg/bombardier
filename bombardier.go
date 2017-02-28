@@ -307,6 +307,10 @@ const (
 	exitFailure = 1
 )
 
+var (
+	version = "unspecified"
+)
+
 func main() {
 	cfg, err := parser.parse(os.Args)
 	if err != nil {
