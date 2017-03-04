@@ -1,4 +1,4 @@
-# bombardier [![Build Status](https://travis-ci.org/codesenberg/bombardier.svg?branch=release-1.0)](https://travis-ci.org/codesenberg/bombardier) [![Go Report Card](https://goreportcard.com/badge/github.com/codesenberg/bombardier)](https://goreportcard.com/report/github.com/codesenberg/bombardier) [![GoDoc](https://godoc.org/github.com/codesenberg/bombardier?status.svg)](http://godoc.org/github.com/codesenberg/bombardier) [![Coverage](https://gocover.io/_badge/github.com/codesenberg/bombardier)](https://gocover.io/github.com/codesenberg/bombardier)
+# bombardier [![Build Status](https://travis-ci.org/codesenberg/bombardier.svg?branch=release-1.0)](https://travis-ci.org/codesenberg/bombardier) [![Go Report Card](https://goreportcard.com/badge/gopkg.in/codesenberg/bombardier.v1)](https://goreportcard.com/report/gopkg.in/codesenberg/bombardier.v1) [![GoDoc](https://godoc.org/gopkg.in/codesenberg/bombardier.v1?status.svg)](https://godoc.org/gopkg.in/codesenberg/bombardier.v1) [![Coverage](https://gocover.io/_badge/gopkg.in/codesenberg/bombardier.v1)](https://gocover.io/gopkg.in/codesenberg/bombardier.v1)
 bombardier is a HTTP(S) benchmarking tool. It is written in Go programming language and uses excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance.
 
 Tested on go1.6 and higher. Use go1.7+ for best performance.
@@ -16,21 +16,21 @@ bombardier [<flags>] <url>
 
 Flags:
 ```
-      --help                    Show context-sensitive help (also try
-                                --help-long and --help-man).
-  -c, --connections=125         Maximum number of concurrent connections
-  -t, --timeout=2s              Socket/request timeout
-  -l, --latencies               Print latency statistics
-  -m, --method=GET              Request method
-  -b, --body=""                 Request body
-      --cert=""                 Path to the client's TLS Certificate
-      --key=""                  Path to the client's TLS Certificate Private Key
-
-  -k, --insecure                Controls whether a client verifies the server's
-                                certificate chain and host name
-  -H, --headers=[] ...          HTTP headers to use(can be repeated)
-  -n, --requests=[<pos. int.>]  Number of requests
-  -d, --duration=10s            Duration of test
+      --help                  Show context-sensitive help (also try --help-long
+                              and --help-man).
+      --version               Show application version.
+  -c, --connections=125       Maximum number of concurrent connections
+  -t, --timeout=2s            Socket/request timeout
+  -l, --latencies             Print latency statistics
+  -m, --method=GET            Request method
+  -b, --body=""               Request body
+      --cert=""               Path to the client's TLS Certificate
+      --key=""                Path to the client's TLS Certificate Private Key
+  -k, --insecure              Controls whether a client verifies the server's
+                              certificate chain and host name
+  -H, --header="K: V" ...     HTTP headers to use(can be repeated)
+  -n, --requests=[pos. int.]  Number of requests
+  -d, --duration=10s          Duration of test
 ```
 Args:
 ```

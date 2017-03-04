@@ -219,7 +219,8 @@ func (b *bombardier) recordRps() {
 	b.reqs = 0
 	b.start = time.Now()
 	b.rpl.Unlock()
-	b.requests.record(uint64(float64(reqs) / duration.Seconds()))
+	reqsf := float64(reqs) / duration.Seconds()
+	b.requests.record(round(reqsf))
 }
 
 func (b *bombardier) bombard() {
