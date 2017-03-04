@@ -1,15 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/valyala/fasthttp"
-)
-
-var (
-	errInvalidHeaderFormat = errors.New("invalid header format")
 )
 
 type header struct {

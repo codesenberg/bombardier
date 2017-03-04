@@ -18,6 +18,7 @@ type bombardier struct {
 	conf           config
 	requestHeaders *fasthttp.RequestHeader
 	barrier        completionBarrier
+	ratelimiter    limiter
 	workers        sync.WaitGroup
 
 	bytesTotal int64
@@ -75,6 +76,13 @@ func newBombardier(c config) (*bombardier, error) {
 	} else {
 		b.barrier = newTimedCompletionBarrier(*b.conf.duration)
 	}
+
+	if b.conf.rate != nil {
+		b.ratelimiter = newBucketLimiter(*b.conf.rate)
+	} else {
+		b.ratelimiter = &nooplimiter{}
+	}
+
 	b.out = os.Stdout
 
 	tlsConfig, err := generateTLSConfig(c)
@@ -168,8 +176,13 @@ func (b *bombardier) performSingleRequest() {
 }
 
 func (b *bombardier) worker() {
+	done := b.barrier.done()
 	for b.barrier.tryGrabWork() {
+		if b.ratelimiter.pace(done) == brk {
+			break
+		}
 		b.performSingleRequest()
+		b.barrier.jobDone()
 	}
 }
 
@@ -194,6 +207,11 @@ func (b *bombardier) barUpdater() {
 }
 
 func (b *bombardier) rateMeter() {
+	requestsInterval := 10 * time.Millisecond
+	if b.conf.rate != nil {
+		requestsInterval, _ = estimate(*b.conf.rate, rateLimitInterval)
+	}
+	requestsInterval += 10 * time.Millisecond
 	ticker := time.NewTicker(requestsInterval)
 	defer ticker.Stop()
 	tick := ticker.C
@@ -219,7 +237,9 @@ func (b *bombardier) recordRps() {
 	b.reqs = 0
 	b.start = time.Now()
 	b.rpl.Unlock()
-	b.requests.record(uint64(float64(reqs) / duration.Seconds()))
+
+	reqsf := float64(reqs) / duration.Seconds()
+	b.requests.record(round(reqsf))
 }
 
 func (b *bombardier) bombard() {
@@ -298,18 +318,6 @@ func (b *bombardier) disableOutput() {
 	b.redirectOutputTo(ioutil.Discard)
 	b.bar.NotPrint = true
 }
-
-const (
-	maxRps           = 10000000
-	requestsInterval = 100 * time.Millisecond
-	defaultTimeout   = 2 * time.Second
-
-	exitFailure = 1
-)
-
-var (
-	version = "unspecified"
-)
 
 func main() {
 	cfg, err := parser.parse(os.Args)

@@ -8,15 +8,6 @@ import (
 	"github.com/alecthomas/kingpin"
 )
 
-const (
-	decBase = 10
-)
-
-var (
-	emptyConf = config{}
-	parser    = newKingpinParser()
-)
-
 type argsParser interface {
 	parse([]string) (config, error)
 }
@@ -37,6 +28,7 @@ type kingpinParser struct {
 	body      string
 	certPath  string
 	keyPath   string
+	rate      *nullableUint64
 }
 
 func newKingpinParser() argsParser {
@@ -53,6 +45,7 @@ func newKingpinParser() argsParser {
 		keyPath:   "",
 		insecure:  false,
 		url:       "",
+		rate:      new(nullableUint64),
 	}
 
 	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
@@ -90,17 +83,22 @@ func newKingpinParser() argsParser {
 		BoolVar(&kparser.insecure)
 
 	app.Flag("header", "HTTP headers to use(can be repeated)").
-		PlaceHolder("[]").
+		PlaceHolder("\"K: V\"").
 		Short('H').
 		SetValue(kparser.headers)
 	app.Flag("requests", "Number of requests").
-		PlaceHolder("[<pos. int.>]").
+		PlaceHolder("[pos. int.]").
 		Short('n').
 		SetValue(kparser.numReqs)
 	app.Flag("duration", "Duration of test").
 		PlaceHolder(defaultTestDuration.String()).
 		Short('d').
 		SetValue(kparser.duration)
+
+	app.Flag("rate", "Rate limit in requests per second").
+		PlaceHolder("[pos. int.]").
+		Short('r').
+		SetValue(kparser.rate)
 
 	app.Arg("url", "Target's URL").Required().
 		StringVar(&kparser.url)
@@ -128,5 +126,6 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		certPath:       k.certPath,
 		printLatencies: k.latencies,
 		insecure:       k.insecure,
+		rate:           k.rate.val,
 	}, nil
 }

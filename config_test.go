@@ -55,6 +55,7 @@ func TestCheckArgs(t *testing.T) {
 	negativeTimeoutDuration := -1 * time.Second
 	bigTimeoutDuration := 900 * time.Second
 	noHeaders := new(headersList)
+	zeroRate := uint64(0)
 	expectations := []struct {
 		in  config
 		out error
@@ -192,6 +193,19 @@ func TestCheckArgs(t *testing.T) {
 				keyPath:  "test_key.pem",
 			},
 			errNoPathToCert,
+		},
+		{
+			config{
+				numConns: defaultNumberOfConns,
+				numReqs:  &defaultNumberOfReqs,
+				duration: &defaultTestDuration,
+				url:      "http://localhost:8080",
+				headers:  noHeaders,
+				timeout:  defaultTimeout,
+				method:   "GET",
+				rate:     &zeroRate,
+			},
+			errZeroRate,
 		},
 	}
 	for _, e := range expectations {

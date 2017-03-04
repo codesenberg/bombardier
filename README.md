@@ -4,8 +4,8 @@ bombardier is a HTTP(S) benchmarking tool. It is written in Go programming langu
 Tested on go1.6 and higher. Use go1.7+ for best performance.
 
 ##Installation
-You can grab the latest version in the [releases](https://github.com/codesenberg/bombardier/releases) section.
-Alternatively, just run:
+You can grab binaries in the [releases](https://github.com/codesenberg/bombardier/releases) section.
+Alternatively, to get latest and greatest run:
 
 `go get -u github.com/codesenberg/bombardier`
 
@@ -14,32 +14,9 @@ Alternatively, just run:
 bombardier [<flags>] <url>
 ```
 
-Flags:
-```
-      --help                    Show context-sensitive help (also try
-                                --help-long and --help-man).
-  -c, --connections=125         Maximum number of concurrent connections
-  -t, --timeout=2s              Socket/request timeout
-  -l, --latencies               Print latency statistics
-  -m, --method=GET              Request method
-  -b, --body=""                 Request body
-      --cert=""                 Path to the client's TLS Certificate
-      --key=""                  Path to the client's TLS Certificate Private Key
+For a more detailed information about flags consult [GoDoc](http://godoc.org/github.com/codesenberg/bombardier).
 
-  -k, --insecure                Controls whether a client verifies the server's
-                                certificate chain and host name
-  -H, --headers=[] ...          HTTP headers to use(can be repeated)
-  -n, --requests=[<pos. int.>]  Number of requests
-  -d, --duration=10s            Duration of test
-```
-Args:
-```
-  <url>  Target's URL
-```
-To set multiple headers just repeat the `H` flag, like so:
-```
-bombardier -H 'First: Value1' -H 'Second: Value2' -H 'Third: Value3' http://somehost:8080
-```
+##Examples
 Example of running `bombardier` against [this server](https://godoc.org/github.com/codesenberg/bombardier/cmd/utils/simplebenchserver):
 ```
 > bombardier -c 125 -n 10000000 http://localhost:8080

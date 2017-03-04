@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -9,8 +8,6 @@ import (
 	"github.com/goware/urlx"
 	"github.com/valyala/fasthttp"
 )
-
-type testTyp int
 
 type config struct {
 	numConns                             uint64
@@ -20,46 +17,16 @@ type config struct {
 	headers                              *headersList
 	timeout                              time.Duration
 	printLatencies, insecure             bool
+	rate                                 *uint64
 }
+
+type testTyp int
 
 const (
 	none testTyp = iota
 	timed
 	counted
 )
-
-var (
-	defaultTestDuration  = 10 * time.Second
-	defaultNumberOfConns = uint64(125)
-	httpMethods          = []string{
-		"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS",
-	}
-	cantHaveBody = []string{"GET", "HEAD"}
-
-	errInvalidURL = errors.New(
-		"No hostname or invalid scheme")
-	errInvalidNumberOfConns = errors.New(
-		"Invalid number of connections(must be > 0)")
-	errInvalidNumberOfRequests = errors.New(
-		"Invalid number of requests(must be > 0)")
-	errInvalidTestDuration = errors.New(
-		"Invalid test duration(must be >= 1s)")
-	errNegativeTimeout = errors.New(
-		"Timeout can't be negative")
-	errLargeTimeout = errors.New(
-		"Timeout is too big(more that 10s)")
-	errBodyNotAllowed = errors.New(
-		"GET and HEAD requests cannot have body")
-	errNoPathToCert = errors.New(
-		"No Path to TLS Client Certificate")
-	errNoPathToKey = errors.New(
-		"No Path to TLS Client Certificate Private Key")
-)
-
-func init() {
-	sort.Strings(httpMethods)
-	sort.Strings(cantHaveBody)
-}
 
 type invalidHTTPMethodError struct {
 	method string
@@ -74,6 +41,7 @@ func (c *config) checkArgs() error {
 
 	checks := []func() error{
 		c.checkURL,
+		c.checkRate,
 		c.checkRunParameters,
 		c.checkTimeoutDuration,
 		c.checkHTTPParameters,
@@ -114,6 +82,13 @@ func (c *config) checkURL() error {
 		return errInvalidURL
 	}
 	c.url = url.String()
+	return nil
+}
+
+func (c *config) checkRate() error {
+	if c.rate != nil && *c.rate < 1 {
+		return errZeroRate
+	}
 	return nil
 }
 

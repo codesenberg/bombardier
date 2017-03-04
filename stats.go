@@ -47,14 +47,14 @@ func (s *stats) mean() float64 {
 	for i := s.min; i <= s.max; i++ {
 		sum += s.data[i] * i
 	}
-	return float64(sum / s.count)
+	return float64(sum) / float64(s.count)
 }
 
 func (s *stats) stdev(mean float64) float64 {
-	sum := 0.0
 	if s.count < 2 {
 		return 0.0
 	}
+	sum := 0.0
 	for i := s.min; i <= s.max; i++ {
 		if s.data[i] != 0 {
 			sum += math.Pow(float64(i)-mean, 2) * float64(s.data[i])

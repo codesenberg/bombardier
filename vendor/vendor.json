@@ -53,6 +53,12 @@
 			"revisionTime": "2016-07-22T20:42:12Z"
 		},
 		{
+			"checksumSHA1": "sKheT5xw89Tbu2Q071FQO27CVmE=",
+			"path": "github.com/juju/ratelimit",
+			"revision": "77ed1c8a01217656d2080ad51981f6e99adaa177",
+			"revisionTime": "2015-11-25T20:19:25Z"
+		},
+		{
 			"checksumSHA1": "AvontxHAJNWDzPY3gn+EyjAPV8Q=",
 			"path": "github.com/klauspost/compress/flate",
 			"revision": "461e8fd8397ae84a23f56e385801e4feda2048ce",

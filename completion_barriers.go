@@ -9,19 +9,20 @@ import (
 type completionBarrier interface {
 	completed() float64
 	tryGrabWork() bool
+	jobDone()
 	done() <-chan struct{}
 	cancel()
 }
 
 type countingCompletionBarrier struct {
-	numReqs, reqsDone uint64
-	doneChan          chan struct{}
-	closeOnce         sync.Once
+	numReqs, reqsGrabbed, reqsDone uint64
+	doneChan                       chan struct{}
+	closeOnce                      sync.Once
 }
 
 func newCountingCompletionBarrier(numReqs uint64) completionBarrier {
 	c := new(countingCompletionBarrier)
-	c.reqsDone, c.numReqs = 0, numReqs
+	c.reqsDone, c.reqsGrabbed, c.numReqs = 0, 0, numReqs
 	c.doneChan = make(chan struct{})
 	return completionBarrier(c)
 }
@@ -31,14 +32,17 @@ func (c *countingCompletionBarrier) tryGrabWork() bool {
 	case <-c.doneChan:
 		return false
 	default:
-		reqsDone := atomic.AddUint64(&c.reqsDone, 1)
-		canGrabWork := reqsDone <= c.numReqs
-		if !canGrabWork {
-			c.closeOnce.Do(func() {
-				close(c.doneChan)
-			})
-		}
-		return canGrabWork
+		reqsDone := atomic.AddUint64(&c.reqsGrabbed, 1)
+		return reqsDone <= c.numReqs
+	}
+}
+
+func (c *countingCompletionBarrier) jobDone() {
+	reqsDone := atomic.AddUint64(&c.reqsDone, 1)
+	if reqsDone == c.numReqs {
+		c.closeOnce.Do(func() {
+			close(c.doneChan)
+		})
 	}
 }
 
@@ -94,6 +98,9 @@ func (c *timedCompletionBarrier) tryGrabWork() bool {
 	default:
 		return true
 	}
+}
+
+func (c *timedCompletionBarrier) jobDone() {
 }
 
 func (c *timedCompletionBarrier) done() <-chan struct{} {

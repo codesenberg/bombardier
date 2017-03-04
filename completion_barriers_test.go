@@ -1,16 +1,21 @@
 package main
 
 import (
+	"math"
 	"testing"
 	"time"
 )
 
 func TestCouintingCompletionBarrierWait(t *testing.T) {
-	b := newCountingCompletionBarrier(100)
-	go func() {
-		for b.tryGrabWork() {
-		}
-	}()
+	parties := uint64(10)
+	b := newCountingCompletionBarrier(1000)
+	for i := uint64(0); i < parties; i++ {
+		go func() {
+			for b.tryGrabWork() {
+				b.jobDone()
+			}
+		}()
+	}
 	wc := make(chan struct{})
 	go func() {
 		<-b.done()
@@ -35,6 +40,7 @@ func TestTimedCompletionBarrierWait(t *testing.T) {
 		go func() {
 			for b.tryGrabWork() {
 				time.Sleep(sleepDuration)
+				b.jobDone()
 			}
 		}()
 	}
@@ -72,8 +78,16 @@ func TestTimeBarrierCancel(t *testing.T) {
 }
 
 func TestCountedBarrierCancel(t *testing.T) {
-	b := newCountingCompletionBarrier(9000)
+	parties := uint64(10)
+	b := newCountingCompletionBarrier(math.MaxUint64)
 	sleepTime := 100 * time.Millisecond
+	for i := uint64(0); i < parties; i++ {
+		go func() {
+			for b.tryGrabWork() {
+				b.jobDone()
+			}
+		}()
+	}
 	go func() {
 		time.Sleep(sleepTime)
 		b.cancel()

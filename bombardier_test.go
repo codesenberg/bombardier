@@ -29,7 +29,6 @@ func TestBombardierShouldFireSpecifiedNumberOfRequests(t *testing.T) {
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
 		numReqs:  &numReqs,
-		duration: nil,
 		url:      s.URL,
 		headers:  noHeaders,
 		timeout:  defaultTimeout,
@@ -60,7 +59,6 @@ func TestBombardierShouldFinish(t *testing.T) {
 	desiredTestDuration := 1 * time.Second
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
-		numReqs:  nil,
 		duration: &desiredTestDuration,
 		url:      s.URL,
 		headers:  noHeaders,
@@ -106,7 +104,6 @@ func TestBombardierShouldSendHeaders(t *testing.T) {
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
 		numReqs:  &numReqs,
-		duration: nil,
 		url:      s.URL,
 		headers:  &requestHeaders,
 		timeout:  defaultTimeout,
@@ -143,7 +140,6 @@ func TestBombardierHttpCodeRecording(t *testing.T) {
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
 		numReqs:  &numReqs,
-		duration: nil,
 		url:      s.URL,
 		headers:  new(headersList),
 		timeout:  defaultTimeout,
@@ -217,7 +213,6 @@ func TestBombardierThroughputRecording(t *testing.T) {
 	b, e := newBombardier(config{
 		numConns: defaultNumberOfConns,
 		numReqs:  &numReqs,
-		duration: nil,
 		url:      s.URL,
 		headers:  new(headersList),
 		timeout:  defaultTimeout,
@@ -255,7 +250,6 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
 		numReqs:        &numReqs,
-		duration:       nil,
 		url:            s.URL,
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
@@ -284,7 +278,6 @@ func TestBombardierErrorIfFailToReadClientCert(t *testing.T) {
 	_, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
 		numReqs:        &numReqs,
-		duration:       nil,
 		url:            "http://localhost",
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
@@ -350,7 +343,6 @@ func TestBombardierClientCerts(t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
 		numReqs:        &numReqs,
-		duration:       nil,
 		url:            "https://localhost:8080/",
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
@@ -375,5 +367,40 @@ func TestBombardierClientCerts(t *testing.T) {
 	err = ln.Close()
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestBombardierRateLimiting(t *testing.T) {
+	responseSize := 1024
+	response := bytes.Repeat([]byte{'a'}, responseSize)
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			_, err := rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
+	rate := uint64(10000)
+	testDuration := 1 * time.Second
+	b, e := newBombardier(config{
+		numConns: defaultNumberOfConns,
+		duration: &testDuration,
+		url:      s.URL,
+		headers:  new(headersList),
+		timeout:  defaultTimeout,
+		method:   "GET",
+		body:     "",
+		rate:     &rate,
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+	b.bombard()
+	if float64(b.req2xx) < float64(rate)*0.75 ||
+		float64(b.req2xx) > float64(rate)*1.25 {
+		t.Error(rate, b.req2xx)
 	}
 }
