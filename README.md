@@ -3,13 +3,13 @@ bombardier is a HTTP(S) benchmarking tool. It is written in Go programming langu
 
 Tested on go1.6 and higher. Use go1.7+ for best performance.
 
-##Installation
+## Installation
 You can grab the latest version in the [releases](https://github.com/codesenberg/bombardier/releases) section.
 Alternatively, just run:
 
 `go get -u github.com/codesenberg/bombardier`
 
-##Usage
+## Usage
 ```
 bombardier [<flags>] <url>
 ```
