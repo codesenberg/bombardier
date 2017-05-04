@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestShouldReturnNilIfNoHeadersWhereSet(t *testing.T) {
@@ -83,6 +84,7 @@ func TestHTTP2Client(t *testing.T) {
 		errChan <- err
 	}()
 
+	time.Sleep(100 * time.Millisecond)
 	bytesRead, bytesWritten := int64(0), int64(0)
 	c := newHTTPClient(&clientOpts{
 		HTTP2: true,
@@ -135,8 +137,7 @@ func TestHTTP1Clients(t *testing.T) {
 				t.Error(err)
 			}
 		},
-	),
-	)
+	))
 	defer s.Close()
 
 	bytesRead, bytesWritten := int64(0), int64(0)
