@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"testing"
 )
 
@@ -58,34 +57,6 @@ func TestShouldTrimHeaderValues(t *testing.T) {
 		t.Error(err)
 	}
 	if (*h)[0].key != "Key" || (*h)[0].value != "Value" {
-		t.Fail()
-	}
-}
-
-func TestShouldProperlyConvertToFastHttpHeaders(t *testing.T) {
-	h := new(headersList)
-	for _, hs := range []string{
-		"Content-Type: application/json", "Custom-Header: xxx42xxx",
-	} {
-		if err := h.Set(hs); err != nil {
-			t.Error(err)
-		}
-	}
-	fh := h.toRequestHeader()
-	{
-		e, a := []byte("application/json"), fh.Peek("Content-Type")
-		if !bytes.Equal(e, a) {
-			t.Errorf("Expected %v, but got %v", e, a)
-		}
-	}
-	if e, a := []byte("xxx42xxx"), fh.Peek("Custom-Header"); !bytes.Equal(e, a) {
-		t.Errorf("Expected %v, but got %v", e, a)
-	}
-}
-
-func TestShouldReturnNilIfNoHeadersWhereSet(t *testing.T) {
-	h := new(headersList)
-	if h.toRequestHeader() != nil {
 		t.Fail()
 	}
 }

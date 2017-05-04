@@ -1,7 +1,9 @@
 # bombardier [![Build Status](https://travis-ci.org/codesenberg/bombardier.svg?branch=master)](https://travis-ci.org/codesenberg/bombardier) [![Go Report Card](https://goreportcard.com/badge/github.com/codesenberg/bombardier)](https://goreportcard.com/report/github.com/codesenberg/bombardier) [![GoDoc](https://godoc.org/github.com/codesenberg/bombardier?status.svg)](http://godoc.org/github.com/codesenberg/bombardier) [![Coverage](https://gocover.io/_badge/github.com/codesenberg/bombardier)](https://gocover.io/github.com/codesenberg/bombardier)
-bombardier is a HTTP(S) benchmarking tool. It is written in Go programming language and uses excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance.
+bombardier is a HTTP(S) benchmarking tool. It is written in Go programming language and uses excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance. 
 
-Tested on go1.6 and higher. Use go1.7+ for best performance.
+With `bombardier v1.1` and higher you can now use `net/http` client if you need to test HTTP/2.x services or want to use a more RFC-compliant HTTP client.
+
+Tested on go1.8 and higher.
 
 ## Installation
 You can grab binaries in the [releases](https://github.com/codesenberg/bombardier/releases) section.
@@ -15,6 +17,9 @@ bombardier [<flags>] <url>
 ```
 
 For a more detailed information about flags consult [GoDoc](http://godoc.org/github.com/codesenberg/bombardier).
+
+## Known issues
+AFAIK, it's impossible to pass Host header correctly with `fasthttp`, you can use `net/http`(`--http1`/`--http2` flags) to workaround this issue.
 
 ## Examples
 Example of running `bombardier` against [this server](https://godoc.org/github.com/codesenberg/bombardier/cmd/utils/simplebenchserver):

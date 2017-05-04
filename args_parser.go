@@ -17,35 +17,37 @@ type kingpinParser struct {
 
 	url string
 
-	numReqs   *nullableUint64
-	duration  *nullableDuration
-	headers   *headersList
-	numConns  uint64
-	timeout   time.Duration
-	latencies bool
-	insecure  bool
-	method    string
-	body      string
-	certPath  string
-	keyPath   string
-	rate      *nullableUint64
+	numReqs    *nullableUint64
+	duration   *nullableDuration
+	headers    *headersList
+	numConns   uint64
+	timeout    time.Duration
+	latencies  bool
+	insecure   bool
+	method     string
+	body       string
+	certPath   string
+	keyPath    string
+	rate       *nullableUint64
+	clientType clientTyp
 }
 
 func newKingpinParser() argsParser {
 	kparser := &kingpinParser{
-		numReqs:   new(nullableUint64),
-		duration:  new(nullableDuration),
-		headers:   new(headersList),
-		numConns:  defaultNumberOfConns,
-		timeout:   defaultTimeout,
-		latencies: false,
-		method:    "GET",
-		body:      "",
-		certPath:  "",
-		keyPath:   "",
-		insecure:  false,
-		url:       "",
-		rate:      new(nullableUint64),
+		numReqs:    new(nullableUint64),
+		duration:   new(nullableDuration),
+		headers:    new(headersList),
+		numConns:   defaultNumberOfConns,
+		timeout:    defaultTimeout,
+		latencies:  false,
+		method:     "GET",
+		body:       "",
+		certPath:   "",
+		keyPath:    "",
+		insecure:   false,
+		url:        "",
+		rate:       new(nullableUint64),
+		clientType: fhttp,
 	}
 
 	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
@@ -100,6 +102,25 @@ func newKingpinParser() argsParser {
 		Short('r').
 		SetValue(kparser.rate)
 
+	app.Flag("fasthttp", "Use fasthttp client").
+		Action(func(*kingpin.ParseContext) error {
+			kparser.clientType = fhttp
+			return nil
+		}).
+		Bool()
+	app.Flag("http1", "Use net/http client with forced HTTP/1.x").
+		Action(func(*kingpin.ParseContext) error {
+			kparser.clientType = nhttp1
+			return nil
+		}).
+		Bool()
+	app.Flag("http2", "Use net/http client with enabled HTTP/2.0").
+		Action(func(*kingpin.ParseContext) error {
+			kparser.clientType = nhttp2
+			return nil
+		}).
+		Bool()
+
 	app.Arg("url", "Target's URL").Required().
 		StringVar(&kparser.url)
 
@@ -127,5 +148,6 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		printLatencies: k.latencies,
 		insecure:       k.insecure,
 		rate:           k.rate.val,
+		clientType:     k.clientType,
 	}, nil
 }

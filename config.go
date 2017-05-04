@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/goware/urlx"
-	"github.com/valyala/fasthttp"
 )
 
 type config struct {
@@ -18,6 +17,7 @@ type config struct {
 	timeout                              time.Duration
 	printLatencies, insecure             bool
 	rate                                 *uint64
+	clientType                           clientTyp
 }
 
 type testTyp int
@@ -138,10 +138,6 @@ func (c *config) timeoutMillis() uint64 {
 	return uint64(c.timeout.Nanoseconds() / 1000)
 }
 
-func (c *config) requestHeaders() *fasthttp.RequestHeader {
-	return c.headers.toRequestHeader()
-}
-
 func allowedHTTPMethod(method string) bool {
 	i := sort.SearchStrings(httpMethods, method)
 	return i < len(httpMethods) && httpMethods[i] == method
@@ -150,4 +146,24 @@ func allowedHTTPMethod(method string) bool {
 func canHaveBody(method string) bool {
 	i := sort.SearchStrings(cantHaveBody, method)
 	return !(i < len(cantHaveBody) && cantHaveBody[i] == method)
+}
+
+type clientTyp int
+
+const (
+	fhttp clientTyp = iota
+	nhttp1
+	nhttp2
+)
+
+func (ct clientTyp) String() string {
+	switch ct {
+	case fhttp:
+		return "FastHTTP"
+	case nhttp1:
+		return "net/http v1.x"
+	case nhttp2:
+		return "net/http v2.0"
+	}
+	return "unknown client"
 }

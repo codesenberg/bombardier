@@ -7,7 +7,11 @@ import (
 	"time"
 )
 
-var serverPort = flag.String("port", "8080", "port to use for benchmarks")
+var (
+	serverPort = flag.String("port", "8080", "port to use for benchmarks")
+	clientType = flag.String("client-type", "fasthttp",
+		"client to use in benchmarks")
+)
 
 var (
 	longDuration = 9001 * time.Hour
@@ -26,6 +30,7 @@ func BenchmarkBombardierSingleReqPerf(b *testing.B) {
 		method:         "GET",
 		body:           "",
 		printLatencies: false,
+		clientType:     clientTypeFromString(*clientType),
 	}, b)
 }
 
@@ -42,6 +47,7 @@ func BenchmarkBombardierRateLimitPerf(b *testing.B) {
 		body:           "",
 		printLatencies: false,
 		rate:           &highRate,
+		clientType:     clientTypeFromString(*clientType),
 	}, b)
 }
 

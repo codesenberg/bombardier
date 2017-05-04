@@ -2,7 +2,10 @@ package main
 
 import (
 	"math"
+	"math/rand"
+	"runtime"
 	"testing"
+	"time"
 )
 
 func TestShouldInitializeStats(t *testing.T) {
@@ -151,4 +154,49 @@ func TestStatsToStringConversions(t *testing.T) {
 
 func equalFloats(expected, actual, err float64) bool {
 	return expected-err < actual && actual < expected+err
+}
+
+func BenchmarkStatsRecord(b *testing.B) {
+	vcount := 10000000
+	mean := uint64(500)
+	stdev := uint64(200)
+	m := newStats(uint64(defaultTimeout.Nanoseconds() / 1000))
+	numCPU := runtime.NumCPU()
+	randomSequences := randomMeanSeqs(mean, stdev, vcount/10, numCPU)
+	b.SetParallelism(int(defaultNumberOfConns) / numCPU)
+	runtime.GC()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		values := randomSequences[rand.Intn(len(randomSequences))]
+		vlen := len(values)
+		counter := 0
+		for pb.Next() {
+			m.record(values[counter])
+			counter++
+			if counter == vlen {
+				counter = 0
+			}
+		}
+	})
+}
+
+func generateKeys(n int, mean, stdev uint64) []uint64 {
+	res := make([]uint64, n)
+	src := rand.NewSource(time.Now().UnixNano())
+	rng := rand.New(src)
+	for i := 0; i < n; i++ {
+		sample := rng.NormFloat64()*float64(stdev) + float64(mean)
+		res[i] = uint64(sample)
+	}
+	return res
+}
+
+func randomMeanSeqs(
+	mean, stdev uint64, partitionSize, numPartitions int,
+) [][]uint64 {
+	results := make([][]uint64, numPartitions)
+	for i := range results {
+		results[i] = generateKeys(partitionSize, mean, stdev)
+	}
+	return results
 }

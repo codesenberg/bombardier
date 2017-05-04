@@ -332,38 +332,6 @@ func TestTimeoutMillis(t *testing.T) {
 	}
 }
 
-func TestConfigRequestHeaders(t *testing.T) {
-	emptyHeaders := headersList([]header{})
-	singetonHeader := headersList([]header{
-		{"Key", "Value"}})
-	defaultConfig := config{
-		numConns: defaultNumberOfConns,
-		numReqs:  nil,
-		duration: nil,
-		url:      "http://localhost:8080",
-		headers:  &emptyHeaders,
-		timeout:  defaultTimeout,
-		method:   "GET",
-		body:     "",
-	}
-	if defaultConfig.requestHeaders() != nil {
-		t.Fail()
-	}
-	defaultConfigWithHeaders := config{
-		numConns: defaultNumberOfConns,
-		numReqs:  nil,
-		duration: nil,
-		url:      "http://localhost:8080",
-		headers:  &singetonHeader,
-		timeout:  defaultTimeout,
-		method:   "GET",
-		body:     "",
-	}
-	if defaultConfigWithHeaders.requestHeaders() == nil {
-		t.Fail()
-	}
-}
-
 func TestInvalidHTTPMethodError(t *testing.T) {
 	invalidMethod := "NOSUCHMETHOD"
 	want := "Unknown HTTP method: " + invalidMethod
@@ -391,5 +359,36 @@ func TestParsingOfURLsWithoutScheme(t *testing.T) {
 	exp := "http://localhost:8080"
 	if act := c.url; act != exp {
 		t.Error(exp, act)
+	}
+}
+
+func TestClientTypToStringConversion(t *testing.T) {
+	expectations := []struct {
+		in  clientTyp
+		out string
+	}{
+		{fhttp, "FastHTTP"},
+		{nhttp1, "net/http v1.x"},
+		{nhttp2, "net/http v2.0"},
+		{42, "unknown client"},
+	}
+	for _, exp := range expectations {
+		act := exp.in.String()
+		if act != exp.out {
+			t.Errorf("Expected %v, but got %v", exp.out, act)
+		}
+	}
+}
+
+func clientTypeFromString(s string) clientTyp {
+	switch s {
+	case "fasthttp":
+		return fhttp
+	case "http1":
+		return nhttp1
+	case "http2":
+		return nhttp2
+	default:
+		return fhttp
 	}
 }

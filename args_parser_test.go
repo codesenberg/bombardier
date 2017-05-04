@@ -44,6 +44,7 @@ func TestUnspecifiedArgParsing(t *testing.T) {
 }
 
 func TestArgsParsing(t *testing.T) {
+	ten := uint64(10)
 	expectations := []struct {
 		in  [][]string
 		out config
@@ -227,6 +228,93 @@ func TestArgsParsing(t *testing.T) {
 				},
 				method: "GET",
 				url:    "https://somehost.somedomain"},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--rate", "10",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-r", "10",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--rate=10",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-r10",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns: defaultNumberOfConns,
+				timeout:  defaultTimeout,
+				headers:  new(headersList),
+				method:   "GET",
+				url:      "https://somehost.somedomain",
+				rate:     &ten,
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--fasthttp",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:   defaultNumberOfConns,
+				timeout:    defaultTimeout,
+				headers:    new(headersList),
+				method:     "GET",
+				url:        "https://somehost.somedomain",
+				clientType: fhttp,
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--http1",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:   defaultNumberOfConns,
+				timeout:    defaultTimeout,
+				headers:    new(headersList),
+				method:     "GET",
+				url:        "https://somehost.somedomain",
+				clientType: nhttp1,
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--http2",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:   defaultNumberOfConns,
+				timeout:    defaultTimeout,
+				headers:    new(headersList),
+				method:     "GET",
+				url:        "https://somehost.somedomain",
+				clientType: nhttp2,
+			},
 		},
 	}
 	for _, e := range expectations {

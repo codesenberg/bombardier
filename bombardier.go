@@ -11,29 +11,10 @@ import (
 	"time"
 
 	"github.com/cheggaaa/pb"
-	"github.com/valyala/fasthttp"
 )
 
 type bombardier struct {
-	conf           config
-	requestHeaders *fasthttp.RequestHeader
-	barrier        completionBarrier
-	ratelimiter    limiter
-	workers        sync.WaitGroup
-
-	bytesTotal int64
-	bytesData  int64
-	timeTaken  time.Duration
-	latencies  *stats
-	requests   *stats
-
-	client   *fasthttp.Client
-	doneChan chan struct{}
-
-	// RPS metrics
-	rpl   sync.Mutex
-	reqs  int64
-	start time.Time
+	bytesRead, bytesWritten int64
 
 	// HTTP codes
 	req1xx uint64
@@ -42,6 +23,23 @@ type bombardier struct {
 	req4xx uint64
 	req5xx uint64
 	others uint64
+
+	conf        config
+	barrier     completionBarrier
+	ratelimiter limiter
+	workers     sync.WaitGroup
+
+	timeTaken time.Duration
+	latencies *stats
+	requests  *stats
+
+	client   client
+	doneChan chan struct{}
+
+	// RPS metrics
+	rpl   sync.Mutex
+	reqs  int64
+	start time.Time
 
 	// Errors
 	errors *errorMap
@@ -90,63 +88,47 @@ func newBombardier(c config) (*bombardier, error) {
 		return nil, err
 	}
 
-	b.client = &fasthttp.Client{
-		MaxConnsPerHost:               int(c.numConns),
-		ReadTimeout:                   c.timeout,
-		WriteTimeout:                  c.timeout,
-		DisableHeaderNamesNormalizing: true,
-		TLSConfig:                     tlsConfig,
+	cc := &clientOpts{
+		HTTP2:     false,
+		maxConns:  c.numConns,
+		timeout:   c.timeout,
+		tlsConfig: tlsConfig,
+
+		headers:      c.headers,
+		url:          c.url,
+		method:       c.method,
+		body:         c.body,
+		bytesRead:    &b.bytesRead,
+		bytesWritten: &b.bytesWritten,
 	}
+	b.client = makeHTTPClient(c.clientType, cc)
 
 	b.workers.Add(int(c.numConns))
 	b.errors = newErrorMap()
-	b.requestHeaders = c.requestHeaders()
 	b.doneChan = make(chan struct{}, 2)
 	return b, nil
 }
 
-func (b *bombardier) prepareRequest() (*fasthttp.Request, *fasthttp.Response) {
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
-	if b.requestHeaders != nil {
-		b.requestHeaders.CopyTo(&req.Header)
+func makeHTTPClient(clientType clientTyp, cc *clientOpts) client {
+	var cl client
+	switch clientType {
+	case nhttp1:
+		cl = newHTTPClient(cc)
+	case nhttp2:
+		cc.HTTP2 = true
+		cl = newHTTPClient(cc)
+	case fhttp:
+		fallthrough
+	default:
+		cl = newFastHTTPClient(cc)
 	}
-	req.Header.SetMethod(b.conf.method)
-	req.SetRequestURI(b.conf.url)
-	req.SetBodyString(b.conf.body)
-	return req, resp
-}
-
-func (b *bombardier) fireRequest(
-	req *fasthttp.Request, resp *fasthttp.Response,
-) (bytesData, bytesTotal int64, code int, msTaken uint64) {
-	start := time.Now()
-	err := b.client.Do(req, resp)
-	if err != nil {
-		b.errors.add(err)
-		code = -1
-	} else {
-		code = resp.StatusCode()
-	}
-	bytesData = int64(len(resp.Body()))
-	bytesTotal, _ = resp.WriteTo(ioutil.Discard)
-	msTaken = uint64(time.Since(start).Nanoseconds() / 1000)
-	return
-}
-
-func (b *bombardier) releaseRequest(
-	req *fasthttp.Request, resp *fasthttp.Response,
-) {
-	fasthttp.ReleaseRequest(req)
-	fasthttp.ReleaseResponse(resp)
+	return cl
 }
 
 func (b *bombardier) writeStatistics(
-	bytesData, bytesTotal int64, code int, msTaken uint64,
+	code int, msTaken uint64,
 ) {
 	b.latencies.record(msTaken)
-	atomic.AddInt64(&b.bytesTotal, bytesTotal)
-	atomic.AddInt64(&b.bytesData, bytesData)
 	b.rpl.Lock()
 	b.reqs++
 	b.rpl.Unlock()
@@ -169,10 +151,11 @@ func (b *bombardier) writeStatistics(
 }
 
 func (b *bombardier) performSingleRequest() {
-	req, resp := b.prepareRequest()
-	bytesData, bytesTotal, code, msTaken := b.fireRequest(req, resp)
-	b.releaseRequest(req, resp)
-	b.writeStatistics(bytesData, bytesTotal, code, msTaken)
+	code, msTaken, err := b.client.do()
+	if err != nil {
+		b.errors.add(err)
+	}
+	b.writeStatistics(code, msTaken)
 }
 
 func (b *bombardier) worker() {
@@ -261,10 +244,6 @@ func (b *bombardier) bombard() {
 	<-b.doneChan
 }
 
-func (b *bombardier) throughput() float64 {
-	return float64(b.bytesTotal) / b.timeTaken.Seconds()
-}
-
 func (b *bombardier) printIntro() {
 	if b.conf.testType() == counted {
 		fmt.Fprintf(b.out, "Bombarding %v with %v requests using %v connections\n",
@@ -306,7 +285,9 @@ func (b *bombardier) printStats() {
 		}
 	}
 	fmt.Fprintf(b.out, "  %-10v %10v/s\n",
-		"Throughput:", formatBinary(b.throughput()))
+		"Throughput:",
+		formatBinary(float64(b.bytesRead+b.bytesWritten)/b.timeTaken.Seconds()),
+	)
 }
 
 func (b *bombardier) redirectOutputTo(out io.Writer) {
