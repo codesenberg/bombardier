@@ -15,24 +15,7 @@ import (
 )
 
 type bombardier struct {
-	conf           config
-	requestHeaders *fasthttp.RequestHeader
-	barrier        completionBarrier
-	workers        sync.WaitGroup
-
-	bytesTotal int64
-	bytesData  int64
-	timeTaken  time.Duration
-	latencies  *stats
-	requests   *stats
-
-	client   *fasthttp.Client
-	doneChan chan struct{}
-
-	// RPS metrics
-	rpl   sync.Mutex
-	reqs  int64
-	start time.Time
+	bytesTotal, bytesData int64
 
 	// HTTP codes
 	req1xx uint64
@@ -41,6 +24,23 @@ type bombardier struct {
 	req4xx uint64
 	req5xx uint64
 	others uint64
+
+	conf           config
+	requestHeaders *fasthttp.RequestHeader
+	barrier        completionBarrier
+	workers        sync.WaitGroup
+
+	timeTaken time.Duration
+	latencies *stats
+	requests  *stats
+
+	client   *fasthttp.Client
+	doneChan chan struct{}
+
+	// RPS metrics
+	rpl   sync.Mutex
+	reqs  int64
+	start time.Time
 
 	// Errors
 	errors *errorMap
