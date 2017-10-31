@@ -88,6 +88,14 @@ func newBombardier(c config) (*bombardier, error) {
 		return nil, err
 	}
 
+	if c.bodyFilePath != "" {
+		body, err := ioutil.ReadFile(c.bodyFilePath)
+		if err != nil {
+			return nil, err
+		}
+		c.body = string(body)
+	}
+
 	cc := &clientOpts{
 		HTTP2:     false,
 		maxConns:  c.numConns,

@@ -316,6 +316,33 @@ func TestArgsParsing(t *testing.T) {
 				clientType: nhttp2,
 			},
 		},
+		{
+			[][]string{
+				{
+					programName,
+					"--body-file=testbody.txt",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--body-file", "testbody.txt",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-f", "testbody.txt",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:     defaultNumberOfConns,
+				timeout:      defaultTimeout,
+				headers:      new(headersList),
+				method:       "GET",
+				bodyFilePath: "testbody.txt",
+				url:          "https://somehost.somedomain",
+			},
+		},
 	}
 	for _, e := range expectations {
 		for _, args := range e.in {

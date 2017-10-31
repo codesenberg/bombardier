@@ -9,15 +9,16 @@ import (
 )
 
 type config struct {
-	numConns                             uint64
-	numReqs                              *uint64
-	duration                             *time.Duration
-	url, method, body, certPath, keyPath string
-	headers                              *headersList
-	timeout                              time.Duration
-	printLatencies, insecure             bool
-	rate                                 *uint64
-	clientType                           clientTyp
+	numConns                       uint64
+	numReqs                        *uint64
+	duration                       *time.Duration
+	url, method, certPath, keyPath string
+	body, bodyFilePath             string
+	headers                        *headersList
+	timeout                        time.Duration
+	printLatencies, insecure       bool
+	rate                           *uint64
+	clientType                     clientTyp
 }
 
 type testTyp int
@@ -119,8 +120,11 @@ func (c *config) checkHTTPParameters() error {
 	if !allowedHTTPMethod(c.method) {
 		return &invalidHTTPMethodError{method: c.method}
 	}
-	if !canHaveBody(c.method) && len(c.body) > 0 {
+	if !canHaveBody(c.method) && (c.body != "" || c.bodyFilePath != "") {
 		return errBodyNotAllowed
+	}
+	if c.body != "" && c.bodyFilePath != "" {
+		return errBodyProvidedTwice
 	}
 	return nil
 }

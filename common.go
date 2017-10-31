@@ -51,6 +51,7 @@ var (
 		"No Path to TLS Client Certificate Private Key")
 	errZeroRate = errors.New(
 		"Rate can't be less than 1")
+	errBodyProvidedTwice = errors.New("Use either --body or --body-file")
 
 	errInvalidHeaderFormat = errors.New("invalid header format")
 )

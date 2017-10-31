@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -469,4 +470,95 @@ func testAllClients(parent *testing.T, testFun func(clientTyp, *testing.T)) {
 			testFun(ct, t)
 		})
 	}
+}
+
+func TestBombardierSendsBody(t *testing.T) {
+	testAllClients(t, testBombardierSendsBody)
+}
+
+func testBombardierSendsBody(clientType clientTyp, t *testing.T) {
+	response := []byte("OK")
+	requestBody := "abracadabra"
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if string(body) != requestBody {
+				t.Errorf("Expected %v, but got %v", requestBody, string(body))
+			}
+			_, err = rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
+	defer s.Close()
+	one := uint64(1)
+	b, e := newBombardier(config{
+		numConns:   defaultNumberOfConns,
+		numReqs:    &one,
+		url:        s.URL,
+		headers:    new(headersList),
+		timeout:    defaultTimeout,
+		method:     "POST",
+		body:       requestBody,
+		clientType: clientType,
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+	b.bombard()
+}
+
+func TestBombardierSendsBodyFromFile(t *testing.T) {
+	testAllClients(t, testBombardierSendsBody)
+}
+
+func testBombardierSendsBodyFromFile(clientType clientTyp, t *testing.T) {
+	response := []byte("OK")
+	bodyPath := "testbody.txt"
+	requestBody, err := ioutil.ReadFile(bodyPath)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if string(body) != string(requestBody) {
+				t.Errorf("Expected %v, but got %v", string(requestBody), string(body))
+			}
+			_, err = rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
+	defer s.Close()
+	one := uint64(1)
+	b, e := newBombardier(config{
+		numConns:     defaultNumberOfConns,
+		numReqs:      &one,
+		url:          s.URL,
+		headers:      new(headersList),
+		timeout:      defaultTimeout,
+		method:       "POST",
+		bodyFilePath: bodyPath,
+		clientType:   clientType,
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+	b.bombard()
 }

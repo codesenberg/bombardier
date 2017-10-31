@@ -17,6 +17,7 @@ Flags:
   -l, --latencies             Print latency statistics
   -m, --method=GET            Request method
   -b, --body=""               Request body
+  -f, --body-file=""          File to use as request body
       --cert=""               Path to the client's TLS Certificate
       --key=""                Path to the client's TLS Certificate Private Key
   -k, --insecure              Controls whether a client verifies the server's

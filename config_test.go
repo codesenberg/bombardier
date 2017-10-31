@@ -153,6 +153,19 @@ func TestCheckArgs(t *testing.T) {
 		},
 		{
 			config{
+				numConns:     defaultNumberOfConns,
+				numReqs:      &defaultNumberOfReqs,
+				duration:     &defaultTestDuration,
+				url:          "http://localhost:8080",
+				headers:      noHeaders,
+				timeout:      defaultTimeout,
+				method:       "GET",
+				bodyFilePath: "testbody.txt",
+			},
+			errBodyNotAllowed,
+		},
+		{
+			config{
 				numConns: defaultNumberOfConns,
 				numReqs:  &defaultNumberOfReqs,
 				duration: &defaultTestDuration,
@@ -206,6 +219,20 @@ func TestCheckArgs(t *testing.T) {
 				rate:     &zeroRate,
 			},
 			errZeroRate,
+		},
+		{
+			config{
+				numConns:     defaultNumberOfConns,
+				numReqs:      &defaultNumberOfReqs,
+				duration:     &defaultTestDuration,
+				url:          "http://localhost:8080",
+				headers:      noHeaders,
+				timeout:      defaultTimeout,
+				method:       "POST",
+				body:         "abracadabra",
+				bodyFilePath: "testbody.txt",
+			},
+			errBodyProvidedTwice,
 		},
 	}
 	for _, e := range expectations {

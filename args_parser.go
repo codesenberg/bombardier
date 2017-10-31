@@ -17,37 +17,39 @@ type kingpinParser struct {
 
 	url string
 
-	numReqs    *nullableUint64
-	duration   *nullableDuration
-	headers    *headersList
-	numConns   uint64
-	timeout    time.Duration
-	latencies  bool
-	insecure   bool
-	method     string
-	body       string
-	certPath   string
-	keyPath    string
-	rate       *nullableUint64
-	clientType clientTyp
+	numReqs      *nullableUint64
+	duration     *nullableDuration
+	headers      *headersList
+	numConns     uint64
+	timeout      time.Duration
+	latencies    bool
+	insecure     bool
+	method       string
+	body         string
+	bodyFilePath string
+	certPath     string
+	keyPath      string
+	rate         *nullableUint64
+	clientType   clientTyp
 }
 
 func newKingpinParser() argsParser {
 	kparser := &kingpinParser{
-		numReqs:    new(nullableUint64),
-		duration:   new(nullableDuration),
-		headers:    new(headersList),
-		numConns:   defaultNumberOfConns,
-		timeout:    defaultTimeout,
-		latencies:  false,
-		method:     "GET",
-		body:       "",
-		certPath:   "",
-		keyPath:    "",
-		insecure:   false,
-		url:        "",
-		rate:       new(nullableUint64),
-		clientType: fhttp,
+		numReqs:      new(nullableUint64),
+		duration:     new(nullableDuration),
+		headers:      new(headersList),
+		numConns:     defaultNumberOfConns,
+		timeout:      defaultTimeout,
+		latencies:    false,
+		method:       "GET",
+		body:         "",
+		bodyFilePath: "",
+		certPath:     "",
+		keyPath:      "",
+		insecure:     false,
+		url:          "",
+		rate:         new(nullableUint64),
+		clientType:   fhttp,
 	}
 
 	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
@@ -72,6 +74,10 @@ func newKingpinParser() argsParser {
 		Default("").
 		Short('b').
 		StringVar(&kparser.body)
+	app.Flag("body-file", "File to use as request body").
+		Default("").
+		Short('f').
+		StringVar(&kparser.bodyFilePath)
 	app.Flag("cert", "Path to the client's TLS Certificate").
 		Default("").
 		StringVar(&kparser.certPath)
@@ -143,6 +149,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		timeout:        k.timeout,
 		method:         k.method,
 		body:           k.body,
+		bodyFilePath:   k.bodyFilePath,
 		keyPath:        k.keyPath,
 		certPath:       k.certPath,
 		printLatencies: k.latencies,
