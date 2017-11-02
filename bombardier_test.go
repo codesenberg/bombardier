@@ -516,7 +516,7 @@ func testBombardierSendsBody(clientType clientTyp, t *testing.T) {
 }
 
 func TestBombardierSendsBodyFromFile(t *testing.T) {
-	testAllClients(t, testBombardierSendsBody)
+	testAllClients(t, testBombardierSendsBodyFromFile)
 }
 
 func testBombardierSendsBodyFromFile(clientType clientTyp, t *testing.T) {

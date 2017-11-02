@@ -133,7 +133,6 @@ func TestBucketLimiterHighRates(t *testing.T) {
 		close(done)
 		select {
 		case <-waitChan:
-			break
 		case <-time.After(exp.duration + 10*time.Millisecond):
 			t.Error("failed to complete: ", exp)
 			return
