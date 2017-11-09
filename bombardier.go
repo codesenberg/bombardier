@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -88,12 +89,32 @@ func newBombardier(c config) (*bombardier, error) {
 		return nil, err
 	}
 
-	if c.bodyFilePath != "" {
-		body, err := ioutil.ReadFile(c.bodyFilePath)
-		if err != nil {
-			return nil, err
+	var (
+		pbody *string
+		bsp   bodyStreamProducer
+	)
+	if c.stream {
+		if c.bodyFilePath != "" {
+			bsp = func() (io.ReadCloser, error) {
+				return os.Open(c.bodyFilePath)
+			}
+		} else {
+			bsp = func() (io.ReadCloser, error) {
+				return ioutil.NopCloser(
+					proxyReader{strings.NewReader(c.body)},
+				), nil
+			}
 		}
-		c.body = string(body)
+	} else {
+		pbody = &c.body
+		if c.bodyFilePath != "" {
+			body, err := ioutil.ReadFile(c.bodyFilePath)
+			if err != nil {
+				return nil, err
+			}
+			sbody := string(body)
+			pbody = &sbody
+		}
 	}
 
 	cc := &clientOpts{
@@ -105,7 +126,8 @@ func newBombardier(c config) (*bombardier, error) {
 		headers:      c.headers,
 		url:          c.url,
 		method:       c.method,
-		body:         c.body,
+		body:         pbody,
+		bodProd:      bsp,
 		bytesRead:    &b.bytesRead,
 		bytesWritten: &b.bytesWritten,
 	}

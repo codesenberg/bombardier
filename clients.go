@@ -18,6 +18,8 @@ type client interface {
 	do() (code int, msTaken uint64, err error)
 }
 
+type bodyStreamProducer func() (io.ReadCloser, error)
+
 type clientOpts struct {
 	HTTP2 bool
 
@@ -25,8 +27,11 @@ type clientOpts struct {
 	timeout   time.Duration
 	tlsConfig *tls.Config
 
-	headers           *headersList
-	url, method, body string
+	headers     *headersList
+	url, method string
+
+	body    *string
+	bodProd bodyStreamProducer
 
 	bytesRead, bytesWritten *int64
 }
@@ -34,8 +39,11 @@ type clientOpts struct {
 type fasthttpClient struct {
 	client *fasthttp.Client
 
-	headers           *fasthttp.RequestHeader
-	url, method, body string
+	headers     *fasthttp.RequestHeader
+	url, method string
+
+	body    *string
+	bodProd bodyStreamProducer
 }
 
 func newFastHTTPClient(opts *clientOpts) client {
@@ -52,6 +60,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 	}
 	c.headers = headersToFastHTTPHeaders(opts.headers)
 	c.url, c.method, c.body = opts.url, opts.method, opts.body
+	c.bodProd = opts.bodProd
 	return client(c)
 }
 
@@ -66,7 +75,15 @@ func (c *fasthttpClient) do() (
 	}
 	req.Header.SetMethod(c.method)
 	req.SetRequestURI(c.url)
-	req.SetBodyString(c.body)
+	if c.body != nil {
+		req.SetBodyString(*c.body)
+	} else {
+		bs, bserr := c.bodProd()
+		if bserr != nil {
+			return 0, 0, bserr
+		}
+		req.SetBodyStream(bs, -1)
+	}
 
 	// fire the request
 	start := time.Now()
@@ -88,9 +105,12 @@ func (c *fasthttpClient) do() (
 type httpClient struct {
 	client *http.Client
 
-	headers      http.Header
-	url          *url.URL
-	method, body string
+	headers http.Header
+	url     *url.URL
+	method  string
+
+	body    *string
+	bodProd bodyStreamProducer
 }
 
 func newHTTPClient(opts *clientOpts) client {
@@ -118,7 +138,7 @@ func newHTTPClient(opts *clientOpts) client {
 	c.client = cl
 
 	c.headers = headersToHTTPHeaders(opts.headers)
-	c.method, c.body = opts.method, opts.body
+	c.method, c.body, c.bodProd = opts.method, opts.body, opts.bodProd
 	var err error
 	c.url, err = urlx.Parse(opts.url)
 	if err != nil {
@@ -142,8 +162,16 @@ func (c *httpClient) do() (
 		req.Host = host
 	}
 
-	br := strings.NewReader(c.body)
-	req.Body = ioutil.NopCloser(br)
+	if c.body != nil {
+		br := strings.NewReader(*c.body)
+		req.Body = ioutil.NopCloser(br)
+	} else {
+		bs, bserr := c.bodProd()
+		if bserr != nil {
+			return 0, 0, bserr
+		}
+		req.Body = bs
+	}
 
 	start := time.Now()
 	resp, err := c.client.Do(req)

@@ -343,6 +343,28 @@ func TestArgsParsing(t *testing.T) {
 				url:          "https://somehost.somedomain",
 			},
 		},
+		{
+			[][]string{
+				{
+					programName,
+					"--stream",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-s",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns: defaultNumberOfConns,
+				timeout:  defaultTimeout,
+				headers:  new(headersList),
+				method:   "GET",
+				stream:   true,
+				url:      "https://somehost.somedomain",
+			},
+		},
 	}
 	for _, e := range expectations {
 		for _, args := range e.in {

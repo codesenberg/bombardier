@@ -14,6 +14,7 @@ type config struct {
 	duration                       *time.Duration
 	url, method, certPath, keyPath string
 	body, bodyFilePath             string
+	stream                         bool
 	headers                        *headersList
 	timeout                        time.Duration
 	printLatencies, insecure       bool

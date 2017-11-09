@@ -97,6 +97,8 @@ func TestHTTP2Client(t *testing.T) {
 			InsecureSkipVerify: true,
 		},
 
+		body: new(string),
+
 		bytesRead:    &bytesRead,
 		bytesWritten: &bytesWritten,
 	})
@@ -148,6 +150,8 @@ func TestHTTP1Clients(t *testing.T) {
 		headers: new(headersList),
 		url:     s.URL,
 		method:  "GET",
+
+		body: new(string),
 
 		bytesRead:    &bytesRead,
 		bytesWritten: &bytesWritten,

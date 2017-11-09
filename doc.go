@@ -18,6 +18,8 @@ Flags:
   -m, --method=GET            Request method
   -b, --body=""               Request body
   -f, --body-file=""          File to use as request body
+  -s, --stream                Specify whether to stream body using chunked
+                              transfer encoding or to serve it from memory
       --cert=""               Path to the client's TLS Certificate
       --key=""                Path to the client's TLS Certificate Private Key
   -k, --insecure              Controls whether a client verifies the server's

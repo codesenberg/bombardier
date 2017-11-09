@@ -10,6 +10,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -553,6 +555,121 @@ func testBombardierSendsBodyFromFile(clientType clientTyp, t *testing.T) {
 		timeout:      defaultTimeout,
 		method:       "POST",
 		bodyFilePath: bodyPath,
+		clientType:   clientType,
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+	b.bombard()
+}
+
+func TestBombardierFileDoesntExist(t *testing.T) {
+	bodyPath := "/does/not/exist.forreal"
+	_, e := newBombardier(config{
+		numConns:     defaultNumberOfConns,
+		url:          "http://example.com",
+		headers:      new(headersList),
+		timeout:      defaultTimeout,
+		method:       "POST",
+		bodyFilePath: bodyPath,
+	})
+	_, ok := e.(*os.PathError)
+	if !ok {
+		t.Errorf("Expected to get PathError, but got %v", e)
+	}
+}
+
+func TestBombardierStreamsBody(t *testing.T) {
+	testAllClients(t, testBombardierStreamsBody)
+}
+
+func testBombardierStreamsBody(clientType clientTyp, t *testing.T) {
+	response := []byte("OK")
+	requestBody := "abracadabra"
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if te := r.TransferEncoding; !reflect.DeepEqual(te, []string{"chunked"}) {
+				t.Errorf("Expected chunked transfer encoding, but got %v", te)
+			}
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if string(body) != requestBody {
+				t.Errorf("Expected %v, but got %v", requestBody, string(body))
+			}
+			_, err = rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
+	defer s.Close()
+	one := uint64(1)
+	b, e := newBombardier(config{
+		numConns:   defaultNumberOfConns,
+		numReqs:    &one,
+		url:        s.URL,
+		headers:    new(headersList),
+		timeout:    defaultTimeout,
+		method:     "POST",
+		body:       requestBody,
+		stream:     true,
+		clientType: clientType,
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+	b.bombard()
+}
+
+func TestBombardierStreamsBodyFromFile(t *testing.T) {
+	testAllClients(t, testBombardierStreamsBodyFromFile)
+}
+
+func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
+	response := []byte("OK")
+	bodyPath := "testbody.txt"
+	requestBody, err := ioutil.ReadFile(bodyPath)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if te := r.TransferEncoding; !reflect.DeepEqual(te, []string{"chunked"}) {
+				t.Errorf("Expected chunked transfer encoding, but got %v", te)
+			}
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if string(body) != string(requestBody) {
+				t.Errorf("Expected %v, but got %v", string(requestBody), string(body))
+			}
+			_, err = rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
+	defer s.Close()
+	one := uint64(1)
+	b, e := newBombardier(config{
+		numConns:     defaultNumberOfConns,
+		numReqs:      &one,
+		url:          s.URL,
+		headers:      new(headersList),
+		timeout:      defaultTimeout,
+		method:       "POST",
+		bodyFilePath: bodyPath,
+		stream:       true,
 		clientType:   clientType,
 	})
 	if e != nil {
