@@ -9,7 +9,6 @@ import (
 const (
 	decBase = 10
 
-	maxRps            = 10000000
 	rateLimitInterval = 10 * time.Millisecond
 	oneSecond         = 1 * time.Second
 

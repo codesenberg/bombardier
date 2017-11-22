@@ -4,14 +4,18 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cheggaaa/pb"
+	fhist "github.com/codesenberg/concurrent/float64/histogram"
+	uhist "github.com/codesenberg/concurrent/uint64/histogram"
 )
 
 type bombardier struct {
@@ -31,8 +35,8 @@ type bombardier struct {
 	workers     sync.WaitGroup
 
 	timeTaken time.Duration
-	latencies *stats
-	requests  *stats
+	latencies *uhist.Histogram
+	requests  *fhist.Histogram
 
 	client   client
 	doneChan chan struct{}
@@ -58,8 +62,8 @@ func newBombardier(c config) (*bombardier, error) {
 	}
 	b := new(bombardier)
 	b.conf = c
-	b.latencies = newStats(c.timeoutMillis())
-	b.requests = newStats(maxRps)
+	b.latencies = uhist.Default()
+	b.requests = fhist.Default()
 
 	if b.conf.testType() == counted {
 		b.bar = pb.New64(int64(*b.conf.numReqs))
@@ -158,7 +162,7 @@ func makeHTTPClient(clientType clientTyp, cc *clientOpts) client {
 func (b *bombardier) writeStatistics(
 	code int, msTaken uint64,
 ) {
-	b.latencies.record(msTaken)
+	b.latencies.Increment(msTaken)
 	b.rpl.Lock()
 	b.reqs++
 	b.rpl.Unlock()
@@ -252,7 +256,7 @@ func (b *bombardier) recordRps() {
 	b.rpl.Unlock()
 
 	reqsf := float64(reqs) / duration.Seconds()
-	b.requests.record(round(reqsf))
+	b.requests.Increment(reqsf)
 }
 
 func (b *bombardier) bombard() {
@@ -284,16 +288,93 @@ func (b *bombardier) printIntro() {
 	}
 }
 
+func latenciesPercentile(h *uhist.Histogram, p float64) uint64 {
+	keys := make([]uint64, 0, h.Count())
+	totalCount := uint64(0)
+	h.VisitAll(func(k uint64, v uint64) bool {
+		keys = append(keys, k)
+		totalCount += v
+		return true
+	})
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	rank := uint64((p/100.0)*float64(totalCount) + 0.5)
+	total := uint64(0)
+	for _, k := range keys {
+		total += h.Get(k)
+		if total >= rank {
+			return k
+		}
+	}
+	return 0
+}
+
 func (b *bombardier) printLatencyStats() {
 	percentiles := []float64{50.0, 75.0, 90.0, 99.0}
 	fmt.Fprintln(b.out, "  Latency Distribution")
 	for i := 0; i < len(percentiles); i++ {
 		p := percentiles[i]
-		n := b.latencies.percentile(p)
+		n := latenciesPercentile(b.latencies, p)
 		fmt.Fprintf(b.out, "     %2.0f%% %10s",
 			p, formatUnits(float64(n), timeUnitsUs, 2))
 		fmt.Fprintf(b.out, "\n")
 	}
+}
+
+func rpsString(h *fhist.Histogram) string {
+	sum := float64(0)
+	count := uint64(1)
+	max := 0.0
+	h.VisitAll(func(f float64, c uint64) bool {
+		if math.IsInf(f, 0) || math.IsNaN(f) {
+			return true
+		}
+		if f > max {
+			max = f
+		}
+		sum += f * float64(c)
+		count += c
+		return true
+	})
+	mean := sum / float64(count)
+	sumOfSquares := float64(0)
+	h.VisitAll(func(f float64, c uint64) bool {
+		if math.IsInf(f, 0) || math.IsNaN(f) {
+			return true
+		}
+		sumOfSquares += math.Pow(f-mean, 2)
+		return true
+	})
+	stddev := math.Sqrt(sumOfSquares / float64(count))
+	return fmt.Sprintf("  %-10v %10.2f %10.2f %10.2f",
+		"Reqs/sec", mean, stddev, max)
+}
+
+func latenciesString(h *uhist.Histogram) string {
+	sum := uint64(0)
+	count := uint64(1)
+	max := uint64(0)
+	h.VisitAll(func(f uint64, c uint64) bool {
+		if f > max {
+			max = f
+		}
+		sum += f * c
+		count += c
+		return true
+	})
+	mean := float64(sum) / float64(count)
+	sumOfSquares := float64(0)
+	h.VisitAll(func(f uint64, c uint64) bool {
+		sumOfSquares += math.Pow(float64(f)-mean, 2)
+		return true
+	})
+	stddev := math.Sqrt(sumOfSquares / float64(count))
+	return fmt.Sprintf("  %-10v %10v %10v %10v",
+		"Reqs/sec",
+		formatTimeUs(mean),
+		formatTimeUs(stddev),
+		formatTimeUs(float64(max)))
 }
 
 func (b *bombardier) printStats() {

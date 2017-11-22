@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const maxRps = 10000000
+
 func TestNoopLimiter(t *testing.T) {
 	var lim limiter = &nooplimiter{}
 	done := make(chan struct{})

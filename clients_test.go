@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -110,10 +111,10 @@ func TestHTTP2Client(t *testing.T) {
 	if code != http.StatusOK {
 		t.Errorf("invalid response code: %v", code)
 	}
-	if bytesRead == 0 {
+	if atomic.LoadInt64(&bytesRead) == 0 {
 		t.Errorf("invalid response size: %v", bytesRead)
 	}
-	if bytesWritten == 0 {
+	if atomic.LoadInt64(&bytesWritten) == 0 {
 		t.Errorf("empty request of size: %v", bytesWritten)
 	}
 	err = s.Close()

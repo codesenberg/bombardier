@@ -47,6 +47,30 @@
 			"revisionTime": "2016-11-21T09:29:06Z"
 		},
 		{
+			"checksumSHA1": "0pSZ0N4WEKIcvFd5Qu106C8qoDI=",
+			"path": "github.com/codesenberg/concurrent/float64/hash",
+			"revision": "5f8746fab52881282a2e8aada77773657434e608",
+			"revisionTime": "2017-11-18T13:51:32Z"
+		},
+		{
+			"checksumSHA1": "zmPNqTaB8gmE0V9iN6S+JyMvdtk=",
+			"path": "github.com/codesenberg/concurrent/float64/histogram",
+			"revision": "fe682250a28364f4d710a52894b5d270d0da4738",
+			"revisionTime": "2017-11-21T10:06:58Z"
+		},
+		{
+			"checksumSHA1": "IG05egTrEyC6gaOjpdOkRqUSk9g=",
+			"path": "github.com/codesenberg/concurrent/uint64/hash",
+			"revision": "5f8746fab52881282a2e8aada77773657434e608",
+			"revisionTime": "2017-11-18T13:51:32Z"
+		},
+		{
+			"checksumSHA1": "504xv3Lcj/lpK7RFm+S3togt7ZM=",
+			"path": "github.com/codesenberg/concurrent/uint64/histogram",
+			"revision": "fe682250a28364f4d710a52894b5d270d0da4738",
+			"revisionTime": "2017-11-21T10:06:58Z"
+		},
+		{
 			"checksumSHA1": "fuHy7RqerjuNdQCj/Kn2PiyWo1A=",
 			"path": "github.com/goware/urlx",
 			"revision": "8bb4a2e4339f55b15164907177e96e9faf885504",

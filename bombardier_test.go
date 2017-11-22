@@ -308,10 +308,14 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	})
 	if e != nil {
 		t.Error(e)
+		return
 	}
 	dummy := errors.New("dummy error")
 	b.errors.add(dummy)
+
 	b.disableOutput()
+	b.bombard()
+
 	out := new(bytes.Buffer)
 	b.redirectOutputTo(out)
 	b.printStats()
