@@ -40,8 +40,6 @@ var (
 		"Invalid test duration(must be >= 1s)")
 	errNegativeTimeout = errors.New(
 		"Timeout can't be negative")
-	errLargeTimeout = errors.New(
-		"Timeout is too big(more that 10s)")
 	errBodyNotAllowed = errors.New(
 		"GET and HEAD requests cannot have body")
 	errNoPathToCert = errors.New(

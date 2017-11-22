@@ -53,7 +53,6 @@ func TestCheckArgs(t *testing.T) {
 	invalidNumberOfReqs := uint64(0)
 	smallTestDuration := 99 * time.Millisecond
 	negativeTimeoutDuration := -1 * time.Second
-	bigTimeoutDuration := 900 * time.Second
 	noHeaders := new(headersList)
 	zeroRate := uint64(0)
 	expectations := []struct {
@@ -124,19 +123,6 @@ func TestCheckArgs(t *testing.T) {
 				body:     "",
 			},
 			errNegativeTimeout,
-		},
-		{
-			config{
-				numConns: defaultNumberOfConns,
-				numReqs:  &defaultNumberOfReqs,
-				duration: &defaultTestDuration,
-				url:      "http://localhost:8080",
-				headers:  noHeaders,
-				timeout:  bigTimeoutDuration,
-				method:   "GET",
-				body:     "",
-			},
-			errLargeTimeout,
 		},
 		{
 			config{

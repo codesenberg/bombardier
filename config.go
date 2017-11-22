@@ -111,9 +111,6 @@ func (c *config) checkTimeoutDuration() error {
 	if c.timeout < 0 {
 		return errNegativeTimeout
 	}
-	if c.timeout > 10*time.Second {
-		return errLargeTimeout
-	}
 	return nil
 }
 
