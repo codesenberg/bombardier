@@ -27,6 +27,7 @@ var (
 
 	httpMethods = []string{
 		"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS",
+		"PATCH",
 	}
 	cantHaveBody = []string{"GET", "HEAD"}
 
