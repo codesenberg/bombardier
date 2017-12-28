@@ -371,7 +371,7 @@ func latenciesString(h *uhist.Histogram) string {
 	})
 	stddev := math.Sqrt(sumOfSquares / float64(count))
 	return fmt.Sprintf("  %-10v %10v %10v %10v",
-		"Reqs/sec",
+		"Latency",
 		formatTimeUs(mean),
 		formatTimeUs(stddev),
 		formatTimeUs(float64(max)))
