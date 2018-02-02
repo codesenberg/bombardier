@@ -31,6 +31,14 @@ Flags:
       --fasthttp              Use fasthttp client
       --http1                 Use net/http client with forced HTTP/1.x
       --http2                 Use net/http client with enabled HTTP/2.0
+  -p, --print=<spec>          Specifies what to output. Comma-separated list of
+                              values 'intro' (short: 'i'), 'progress' (short:
+                              'p'), 'result' (short: 'r'). Examples:
+
+                                * i,p,r (prints everything)
+                                * intro,result (intro & result)
+                                * r (result only)
+                                * result (same as above)
 
 Args:
   <url>  Target's URL
