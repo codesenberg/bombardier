@@ -428,6 +428,9 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	// TODO(codesenberg): remove. Another hacky attempt to fix Travis CI's
+	// slowness
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestBombardierRateLimiting(t *testing.T) {
