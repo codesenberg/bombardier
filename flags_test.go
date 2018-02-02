@@ -64,3 +64,17 @@ func TestNullableDurationParsing(t *testing.T) {
 		t.Error("Shouldn't fail on correct values")
 	}
 }
+
+func TestNullableStringConversionToString(t *testing.T) {
+	ns := new(nullableString)
+	if act := ns.String(); act != nilStr {
+		t.Error("Unset nullableString should convert to \"nil\"")
+	}
+	someVal := "someval"
+	if err := ns.Set(someVal); err != nil {
+		t.Errorf("Couldn't set nullableString to %q", someVal)
+	}
+	if act := ns.String(); act != someVal {
+		t.Errorf("Expected %q, but got %q", someVal, act)
+	}
+}

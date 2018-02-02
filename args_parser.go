@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/kingpin"
@@ -32,6 +34,8 @@ type kingpinParser struct {
 	keyPath      string
 	rate         *nullableUint64
 	clientType   clientTyp
+
+	printSpec *nullableString
 }
 
 func newKingpinParser() argsParser {
@@ -52,6 +56,7 @@ func newKingpinParser() argsParser {
 		url:          "",
 		rate:         new(nullableUint64),
 		clientType:   fhttp,
+		printSpec:    new(nullableString),
 	}
 
 	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
@@ -133,6 +138,18 @@ func newKingpinParser() argsParser {
 		}).
 		Bool()
 
+	app.Flag(
+		"print", "Specifies what to output. Comma-separated list of values"+
+			" 'intro' (short: 'i'), 'progress' (short: 'p'),"+
+			" 'result' (short: 'r'). Examples:"+
+			"\n\t* i,p,r (prints everything)"+
+			"\n\t* intro,result (intro & result)"+
+			"\n\t* r (result only)"+
+			"\n\t* result (same as above)").
+		PlaceHolder("<spec>").
+		Short('p').
+		SetValue(kparser.printSpec)
+
 	app.Arg("url", "Target's URL").Required().
 		StringVar(&kparser.url)
 
@@ -145,6 +162,13 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 	_, err := k.app.Parse(args[1:])
 	if err != nil {
 		return emptyConf, err
+	}
+	pi, pp, pr := true, true, true
+	if k.printSpec.val != nil {
+		pi, pp, pr, err = parsePrintSpec(*k.printSpec.val)
+		if err != nil {
+			return emptyConf, err
+		}
 	}
 	return config{
 		numConns:       k.numConns,
@@ -163,5 +187,38 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		insecure:       k.insecure,
 		rate:           k.rate.val,
 		clientType:     k.clientType,
+		printIntro:     pi,
+		printProgress:  pp,
+		printResult:    pr,
 	}, nil
+}
+
+func parsePrintSpec(spec string) (bool, bool, bool, error) {
+	pi, pp, pr := false, false, false
+	if spec == "" {
+		return false, false, false, errEmptyPrintSpec
+	}
+	parts := strings.Split(spec, ",")
+	partsCount := 0
+	for _, p := range parts {
+		switch p {
+		case "i", "intro":
+			pi = true
+		case "p", "progress":
+			pp = true
+		case "r", "result":
+			pr = true
+		default:
+			return false, false, false,
+				fmt.Errorf("%q is not a valid part of print spec", p)
+		}
+		partsCount++
+	}
+	if partsCount < 1 || partsCount > 3 {
+		return false, false, false,
+			fmt.Errorf(
+				"Spec %q has too many parts, at most 3 are allowed", spec,
+			)
+	}
+	return pi, pp, pr, nil
 }

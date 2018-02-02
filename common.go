@@ -51,7 +51,9 @@ var (
 		"Rate can't be less than 1")
 	errBodyProvidedTwice = errors.New("Use either --body or --body-file")
 
-	errInvalidHeaderFormat = errors.New("invalid header format")
+	errInvalidHeaderFormat = errors.New("Invalid header format")
+	errEmptyPrintSpec      = errors.New(
+		"Empty print spec is not a valid print spec")
 )
 
 func init() {

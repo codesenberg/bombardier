@@ -305,6 +305,9 @@ func TestBombardierStatsPrinting(t *testing.T) {
 		method:         "GET",
 		body:           "",
 		printLatencies: true,
+		printIntro:     true,
+		printProgress:  true,
+		printResult:    true,
 	})
 	if e != nil {
 		t.Error(e)
@@ -313,11 +316,10 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	dummy := errors.New("dummy error")
 	b.errors.add(dummy)
 
-	b.disableOutput()
-	b.bombard()
-
 	out := new(bytes.Buffer)
 	b.redirectOutputTo(out)
+	b.bombard()
+
 	b.printStats()
 	l := out.Len()
 	// Here we only test if anything is written

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -52,11 +53,15 @@ func TestArgsParsing(t *testing.T) {
 		{
 			[][]string{{programName, "https://somehost.somedomain"}},
 			config{
-				numConns: defaultNumberOfConns,
-				timeout:  defaultTimeout,
-				headers:  new(headersList),
-				method:   "GET",
-				url:      "https://somehost.somedomain"},
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
 		},
 		{
 			[][]string{
@@ -90,12 +95,16 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns: 10,
-				timeout:  10 * time.Second,
-				headers:  new(headersList),
-				method:   "GET",
-				numReqs:  &defaultNumberOfReqs,
-				url:      "https://somehost.somedomain"},
+				numConns:      10,
+				timeout:       10 * time.Second,
+				headers:       new(headersList),
+				method:        "GET",
+				numReqs:       &defaultNumberOfReqs,
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
 		},
 		{
 			[][]string{
@@ -116,7 +125,11 @@ func TestArgsParsing(t *testing.T) {
 				headers:        new(headersList),
 				printLatencies: true,
 				method:         "GET",
-				url:            "https://somehost.somedomain"},
+				url:            "https://somehost.somedomain",
+				printIntro:     true,
+				printProgress:  true,
+				printResult:    true,
+			},
 		},
 		{
 			[][]string{
@@ -132,12 +145,16 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns: defaultNumberOfConns,
-				timeout:  defaultTimeout,
-				headers:  new(headersList),
-				insecure: true,
-				method:   "GET",
-				url:      "https://somehost.somedomain"},
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				insecure:      true,
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
 		},
 		{
 			[][]string{
@@ -155,13 +172,17 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns: defaultNumberOfConns,
-				timeout:  defaultTimeout,
-				headers:  new(headersList),
-				method:   "GET",
-				keyPath:  "testclient.key",
-				certPath: "testclient.cert",
-				url:      "https://somehost.somedomain"},
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				keyPath:       "testclient.key",
+				certPath:      "testclient.cert",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
 		},
 		{
 			[][]string{
@@ -191,12 +212,16 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns: defaultNumberOfConns,
-				timeout:  defaultTimeout,
-				headers:  new(headersList),
-				method:   "POST",
-				body:     "reqbody",
-				url:      "https://somehost.somedomain"},
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "POST",
+				body:          "reqbody",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
 		},
 		{
 			[][]string{
@@ -226,8 +251,12 @@ func TestArgsParsing(t *testing.T) {
 					{"One", "Value one"},
 					{"Two", "Value two"},
 				},
-				method: "GET",
-				url:    "https://somehost.somedomain"},
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
 		},
 		{
 			[][]string{
@@ -253,12 +282,15 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns: defaultNumberOfConns,
-				timeout:  defaultTimeout,
-				headers:  new(headersList),
-				method:   "GET",
-				url:      "https://somehost.somedomain",
-				rate:     &ten,
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				rate:          &ten,
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
 			},
 		},
 		{
@@ -274,12 +306,15 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns:   defaultNumberOfConns,
-				timeout:    defaultTimeout,
-				headers:    new(headersList),
-				method:     "GET",
-				url:        "https://somehost.somedomain",
-				clientType: fhttp,
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				clientType:    fhttp,
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
 			},
 		},
 		{
@@ -291,12 +326,15 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns:   defaultNumberOfConns,
-				timeout:    defaultTimeout,
-				headers:    new(headersList),
-				method:     "GET",
-				url:        "https://somehost.somedomain",
-				clientType: nhttp1,
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				clientType:    nhttp1,
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
 			},
 		},
 		{
@@ -308,12 +346,15 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns:   defaultNumberOfConns,
-				timeout:    defaultTimeout,
-				headers:    new(headersList),
-				method:     "GET",
-				url:        "https://somehost.somedomain",
-				clientType: nhttp2,
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				clientType:    nhttp2,
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
 			},
 		},
 		{
@@ -335,12 +376,15 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns:     defaultNumberOfConns,
-				timeout:      defaultTimeout,
-				headers:      new(headersList),
-				method:       "GET",
-				bodyFilePath: "testbody.txt",
-				url:          "https://somehost.somedomain",
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				bodyFilePath:  "testbody.txt",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
 			},
 		},
 		{
@@ -357,12 +401,121 @@ func TestArgsParsing(t *testing.T) {
 				},
 			},
 			config{
-				numConns: defaultNumberOfConns,
-				timeout:  defaultTimeout,
-				headers:  new(headersList),
-				method:   "GET",
-				stream:   true,
-				url:      "https://somehost.somedomain",
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				stream:        true,
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--print=r,i,p",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--print", "r,i,p",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-p", "r,i,p",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--print=result,i,p",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--print", "r,intro,p",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-p", "r,i,progress",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--print=i,r",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--print", "i,r",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-p", "i,r",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--print=intro,r",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--print", "i,result",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-p", "intro,r",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: false,
+				printResult:   true,
 			},
 		},
 	}
@@ -380,5 +533,81 @@ func TestArgsParsing(t *testing.T) {
 				t.Fail()
 			}
 		}
+	}
+}
+
+func TestParsePrintSpec(t *testing.T) {
+	exps := []struct {
+		spec    string
+		results [3]bool
+		err     error
+	}{
+		{
+			"",
+			[3]bool{},
+			errEmptyPrintSpec,
+		},
+		{
+			"a,b,c",
+			[3]bool{},
+			fmt.Errorf("%q is not a valid part of print spec", "a"),
+		},
+		{
+			"i,p,r,i",
+			[3]bool{},
+			fmt.Errorf(
+				"Spec %q has too many parts, at most 3 are allowed", "i,p,r,i",
+			),
+		},
+		{
+			"i",
+			[3]bool{true, false, false},
+			nil,
+		},
+		{
+			"p",
+			[3]bool{false, true, false},
+			nil,
+		},
+		{
+			"r",
+			[3]bool{false, false, true},
+			nil,
+		},
+		{
+			"i,p,r",
+			[3]bool{true, true, true},
+			nil,
+		},
+	}
+	for _, e := range exps {
+		var (
+			act = [3]bool{}
+			err error
+		)
+		act[0], act[1], act[2], err = parsePrintSpec(e.spec)
+		if !reflect.DeepEqual(err, e.err) {
+			t.Errorf("For %q, expected err = %q, but got %q",
+				e.spec, e.err, err,
+			)
+			continue
+		}
+		if !reflect.DeepEqual(e.results, act) {
+			t.Errorf("For %q, expected result = %+v, but got %+v",
+				e.spec, e.results, act,
+			)
+		}
+	}
+}
+
+func TestArgsParsingWithEmptyPrintSpec(t *testing.T) {
+	p := newKingpinParser()
+	c, err := p.parse(
+		[]string{programName, "--print=", "somehost.somedomain"})
+	if err == nil {
+		t.Fail()
+	}
+	if c != emptyConf {
+		t.Fail()
 	}
 }

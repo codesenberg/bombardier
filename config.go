@@ -20,6 +20,8 @@ type config struct {
 	printLatencies, insecure       bool
 	rate                           *uint64
 	clientType                     clientTyp
+
+	printIntro, printProgress, printResult bool
 }
 
 type testTyp int

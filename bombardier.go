@@ -137,6 +137,11 @@ func newBombardier(c config) (*bombardier, error) {
 	}
 	b.client = makeHTTPClient(c.clientType, cc)
 
+	if !b.conf.printProgress {
+		b.bar.Output = ioutil.Discard
+		b.bar.NotPrint = true
+	}
+
 	b.workers.Add(int(c.numConns))
 	b.errors = newErrorMap()
 	b.doneChan = make(chan struct{}, 2)
@@ -211,7 +216,9 @@ func (b *bombardier) barUpdater() {
 			b.bar.Set64(b.bar.Total)
 			b.bar.Update()
 			b.bar.Finish()
-			fmt.Fprintln(b.out, "Done!")
+			if b.conf.printProgress {
+				fmt.Fprintln(b.out, "Done!")
+			}
 			b.doneChan <- struct{}{}
 			return
 		default:
@@ -260,7 +267,9 @@ func (b *bombardier) recordRps() {
 }
 
 func (b *bombardier) bombard() {
-	b.printIntro()
+	if b.conf.printIntro {
+		b.printIntro()
+	}
 	b.bar.Start()
 	bombardmentBegin := time.Now()
 	b.start = time.Now()
@@ -280,7 +289,8 @@ func (b *bombardier) bombard() {
 
 func (b *bombardier) printIntro() {
 	if b.conf.testType() == counted {
-		fmt.Fprintf(b.out, "Bombarding %v with %v request(s) using %v connection(s)\n",
+		fmt.Fprintf(b.out,
+			"Bombarding %v with %v request(s) using %v connection(s)\n",
 			b.conf.url, *b.conf.numReqs, b.conf.numConns)
 	} else if b.conf.testType() == timed {
 		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connection(s)\n",
@@ -429,5 +439,7 @@ func main() {
 		bombardier.barrier.cancel()
 	}()
 	bombardier.bombard()
-	bombardier.printStats()
+	if bombardier.conf.printResult {
+		bombardier.printStats()
+	}
 }
