@@ -36,6 +36,7 @@ type kingpinParser struct {
 	clientType   clientTyp
 
 	printSpec *nullableString
+	noPrint   bool
 }
 
 func newKingpinParser() argsParser {
@@ -57,6 +58,7 @@ func newKingpinParser() argsParser {
 		rate:         new(nullableUint64),
 		clientType:   fhttp,
 		printSpec:    new(nullableString),
+		noPrint:      false,
 	}
 
 	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
@@ -149,6 +151,9 @@ func newKingpinParser() argsParser {
 		PlaceHolder("<spec>").
 		Short('p').
 		SetValue(kparser.printSpec)
+	app.Flag("no-print", "Don't output anything").
+		Short('q').
+		BoolVar(&kparser.noPrint)
 
 	app.Arg("url", "Target's URL").Required().
 		StringVar(&kparser.url)
@@ -169,6 +174,9 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		if err != nil {
 			return emptyConf, err
 		}
+	}
+	if k.noPrint {
+		pi, pp, pr = false, false, false
 	}
 	return config{
 		numConns:       k.numConns,

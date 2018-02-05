@@ -39,6 +39,7 @@ Flags:
                                 * intro,result (intro & result)
                                 * r (result only)
                                 * result (same as above)
+  -q, --no-print              Don't output anything
 
 Args:
   <url>  Target's URL

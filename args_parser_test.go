@@ -518,6 +518,30 @@ func TestArgsParsing(t *testing.T) {
 				printResult:   true,
 			},
 		},
+		{
+			[][]string{
+				{
+					programName,
+					"--no-print",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-q",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    false,
+				printProgress: false,
+				printResult:   false,
+			},
+		},
 	}
 	for _, e := range expectations {
 		for _, args := range e.in {
