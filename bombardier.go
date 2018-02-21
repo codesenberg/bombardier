@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"os"
 	"os/signal"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"text/template"
 	"time"
+
+	"github.com/codesenberg/bombardier/internal"
 
 	"github.com/cheggaaa/pb"
 	fhist "github.com/codesenberg/concurrent/float64/histogram"
@@ -298,117 +299,127 @@ func (b *bombardier) printIntro() {
 	}
 }
 
-func latenciesPercentile(h *uhist.Histogram, p float64) uint64 {
-	keys := make([]uint64, 0, h.Count())
-	totalCount := uint64(0)
-	h.VisitAll(func(k uint64, v uint64) bool {
-		keys = append(keys, k)
-		totalCount += v
-		return true
-	})
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-	rank := uint64((p/100.0)*float64(totalCount) + 0.5)
-	total := uint64(0)
-	for _, k := range keys {
-		total += h.Get(k)
-		if total >= rank {
-			return k
+func (b *bombardier) gatherInfo() internal.TestInfo {
+	info := internal.TestInfo{
+		Spec: internal.Spec{
+			NumberOfConnections: b.conf.numConns,
+
+			Method: b.conf.method,
+			URL:    b.conf.url,
+
+			Body:         b.conf.body,
+			BodyFilePath: b.conf.bodyFilePath,
+
+			CertPath: b.conf.certPath,
+			KeyPath:  b.conf.keyPath,
+
+			Stream:     b.conf.stream,
+			Timeout:    b.conf.timeout,
+			ClientType: internal.ClientType(b.conf.clientType),
+
+			Rate: b.conf.rate,
+		},
+		Result: internal.Results{
+			BytesRead:    b.bytesRead,
+			BytesWritten: b.bytesWritten,
+			TimeTaken:    b.timeTaken,
+
+			Req1XX: b.req1xx,
+			Req2XX: b.req2xx,
+			Req3XX: b.req3xx,
+			Req4XX: b.req4xx,
+			Req5XX: b.req5xx,
+			Others: b.others,
+
+			Latencies: b.latencies,
+			Requests:  b.requests,
+		},
+	}
+
+	testType := b.conf.testType()
+	info.Spec.TestType = internal.TestType(testType)
+	if testType == timed {
+		info.Spec.TestDuration = *b.conf.duration
+	} else if testType == counted {
+		info.Spec.NumberOfRequests = *b.conf.numReqs
+	}
+
+	if b.conf.headers != nil {
+		for _, h := range *b.conf.headers {
+			info.Spec.Headers = append(info.Spec.Headers,
+				internal.Header{
+					Key:   h.key,
+					Value: h.value,
+				})
 		}
 	}
-	return 0
-}
 
-func (b *bombardier) printLatencyStats() {
-	percentiles := []float64{50.0, 75.0, 90.0, 99.0}
-	fmt.Fprintln(b.out, "  Latency Distribution")
-	for i := 0; i < len(percentiles); i++ {
-		p := percentiles[i]
-		n := latenciesPercentile(b.latencies, p)
-		fmt.Fprintf(b.out, "     %2.0f%% %10s",
-			p, formatUnits(float64(n), timeUnitsUs, 2))
-		fmt.Fprintf(b.out, "\n")
+	for _, ewc := range b.errors.byFrequency() {
+		info.Result.Errors = append(info.Result.Errors,
+			internal.ErrorWithCount{
+				Error: ewc.error,
+				Count: ewc.count,
+			})
 	}
-}
 
-func rpsString(h *fhist.Histogram) string {
-	sum := float64(0)
-	count := uint64(1)
-	max := 0.0
-	h.VisitAll(func(f float64, c uint64) bool {
-		if math.IsInf(f, 0) || math.IsNaN(f) {
-			return true
-		}
-		if f > max {
-			max = f
-		}
-		sum += f * float64(c)
-		count += c
-		return true
-	})
-	mean := sum / float64(count)
-	sumOfSquares := float64(0)
-	h.VisitAll(func(f float64, c uint64) bool {
-		if math.IsInf(f, 0) || math.IsNaN(f) {
-			return true
-		}
-		sumOfSquares += math.Pow(f-mean, 2)
-		return true
-	})
-	stddev := math.Sqrt(sumOfSquares / float64(count))
-	return fmt.Sprintf("  %-10v %10.2f %10.2f %10.2f",
-		"Reqs/sec", mean, stddev, max)
-}
-
-func latenciesString(h *uhist.Histogram) string {
-	sum := uint64(0)
-	count := uint64(1)
-	max := uint64(0)
-	h.VisitAll(func(f uint64, c uint64) bool {
-		if f > max {
-			max = f
-		}
-		sum += f * c
-		count += c
-		return true
-	})
-	mean := float64(sum) / float64(count)
-	sumOfSquares := float64(0)
-	h.VisitAll(func(f uint64, c uint64) bool {
-		sumOfSquares += math.Pow(float64(f)-mean, 2)
-		return true
-	})
-	stddev := math.Sqrt(sumOfSquares / float64(count))
-	return fmt.Sprintf("  %-10v %10v %10v %10v",
-		"Latency",
-		formatTimeUs(mean),
-		formatTimeUs(stddev),
-		formatTimeUs(float64(max)))
+	return info
 }
 
 func (b *bombardier) printStats() {
-	fmt.Fprintf(b.out, "%10v %10v %10v %10v\n",
-		"Statistics", "Avg", "Stdev", "Max")
-	fmt.Fprintln(b.out, rpsString(b.requests))
-	fmt.Fprintln(b.out, latenciesString(b.latencies))
-	if b.conf.printLatencies {
-		b.printLatencyStats()
+	info := b.gatherInfo()
+	tmpl := newPlainTextTemplate(b.conf.printLatencies)
+	err := tmpl.Execute(b.out, info)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 	}
-	fmt.Fprintln(b.out, "  HTTP codes:")
-	fmt.Fprintf(b.out, "    1xx - %v, 2xx - %v, 3xx - %v, 4xx - %v, 5xx - %v\n",
-		b.req1xx, b.req2xx, b.req3xx, b.req4xx, b.req5xx)
-	fmt.Fprintf(b.out, "    others - %v\n", b.others)
-	if b.errors.sum() > 0 {
-		fmt.Fprintln(b.out, "  Errors:")
-		for _, entry := range b.errors.byFrequency() {
-			fmt.Fprintf(b.out, "    %10v - %v\n", entry.error, entry.count)
-		}
-	}
-	fmt.Fprintf(b.out, "  %-10v %10v/s\n",
-		"Throughput:",
-		formatBinary(float64(b.bytesRead+b.bytesWritten)/b.timeTaken.Seconds()),
-	)
+}
+
+func newPlainTextTemplate(printLatencies bool) *template.Template {
+	return template.Must(template.New("plain-text").Funcs(template.FuncMap{
+		"WithLatencies": func() bool {
+			return printLatencies
+		},
+		"FormatBinary": formatBinary,
+		"FormatTimeUs": formatTimeUs,
+		"FormatTimeUsUint64": func(us uint64) string {
+			return formatTimeUs(float64(us))
+		},
+		"Percentiles": func() []float64 {
+			return []float64{0.5, 0.75, 0.9, 0.99}
+		},
+		"Multiply": func(num, coeff float64) float64 {
+			return num * coeff
+		},
+	}).Parse(`
+{{- printf "%10v %10v %10v %10v" "Statistics" "Avg" "Stdev" "Max" }}
+{{ with .Result.RequestsStats Percentiles }}
+	{{- printf "  %-10v %10.2f %10.2f %10.2f" "Reqs/sec" .Mean .Stddev .Max -}}
+{{ else }}
+	{{- print "  There wasn't enough data to compute statistics for latencies." }}
+{{ end }}
+{{ with .Result.LatenciesStats Percentiles }}
+	{{- printf "  %-10v %10v %10v %10v" "Latency" (FormatTimeUs .Mean) (FormatTimeUs .Stddev) (FormatTimeUs .Max) }}
+	{{- if WithLatencies }}
+  		{{- "\n  Latency Distribution" }}
+		{{- range $pc, $lat := .Percentiles }}
+			{{- printf "\n     %2.0f%% %10s" (Multiply $pc 100) (FormatTimeUsUint64 $lat) -}}
+		{{ end -}}
+	{{ end }}
+{{ else }}
+	{{- print "  There wasn't enough data to compute statistics for latencies." }}
+{{ end -}}
+{{ with .Result -}}
+{{ "  HTTP codes:" }}
+{{ printf "    1xx - %v, 2xx - %v, 3xx - %v, 4xx - %v, 5xx - %v" .Req1XX .Req2XX .Req3XX .Req4XX .Req5XX }}
+	{{- printf "\n    others - %v" .Others }}
+	{{- with .Errors }}
+		{{- "\n  Errors:"}}
+		{{- range . }}
+			{{- printf "\n    %10v - %v" .Error .Count }}
+		{{- end -}}
+	{{ end -}}
+{{ end }}
+{{ printf "  %-10v %10v/s" "Throughput:" (FormatBinary .Result.Throughput)}}`))
 }
 
 func (b *bombardier) redirectOutputTo(out io.Writer) {
