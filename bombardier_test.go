@@ -154,7 +154,7 @@ func TestBombardierHTTPCodeRecording(t *testing.T) {
 }
 
 func testBombardierHTTPCodeRecording(clientType clientTyp, t *testing.T) {
-	cs := []int{1, 102, 200, 302, 404, 505, 606}
+	cs := []int{102, 200, 302, 404, 505, 606, 707}
 	codes := ring.New(len(cs))
 	for _, v := range cs {
 		codes.Value = v
