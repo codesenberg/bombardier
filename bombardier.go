@@ -395,7 +395,7 @@ func newPlainTextTemplate(printLatencies bool) *template.Template {
 {{ with .Result.RequestsStats Percentiles }}
 	{{- printf "  %-10v %10.2f %10.2f %10.2f" "Reqs/sec" .Mean .Stddev .Max -}}
 {{ else }}
-	{{- print "  There wasn't enough data to compute statistics for latencies." }}
+	{{- print "  There wasn't enough data to compute statistics for requests." }}
 {{ end }}
 {{ with .Result.LatenciesStats Percentiles }}
 	{{- printf "  %-10v %10v %10v %10v" "Latency" (FormatTimeUs .Mean) (FormatTimeUs .Stddev) (FormatTimeUs .Max) }}
