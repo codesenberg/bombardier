@@ -4,9 +4,6 @@ import (
 	"math"
 	"sort"
 	"time"
-
-	fhist "github.com/codesenberg/concurrent/float64/histogram"
-	uhist "github.com/codesenberg/concurrent/uint64/histogram"
 )
 
 // TestInfo holds information about what specification was used
@@ -86,8 +83,22 @@ type Results struct {
 
 	Errors []ErrorWithCount
 
-	Latencies *uhist.Histogram
-	Requests  *fhist.Histogram
+	Latencies ReadonlyUint64Histogram
+	Requests  ReadonlyFloat64Histogram
+}
+
+// ReadonlyUint64Histogram is a readonly histogram with uint64 keys
+type ReadonlyUint64Histogram interface {
+	Get(uint64) uint64
+	VisitAll(func(uint64, uint64) bool)
+	Count() uint64
+}
+
+// ReadonlyFloat64Histogram is a readonly histogram with float64 keys
+type ReadonlyFloat64Histogram interface {
+	Get(float64) uint64
+	VisitAll(func(float64, uint64) bool)
+	Count() uint64
 }
 
 // Throughput returns total throughput (read + write) in bytes per
