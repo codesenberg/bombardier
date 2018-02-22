@@ -40,8 +40,25 @@ Flags:
                                 * r (result only)
                                 * result (same as above)
   -q, --no-print              Don't output anything
+  -o, --format=<spec>         Which format to use to output the result. <spec>
+                              is either a name (or its shorthand) of some format
+                              understood by bombardier or a path to the
+                              user-defined template, which uses Go's
+                              text/template syntax, prefixed with 'path:' string
+                              (without single quotes), i.e.
+                              "path:/some/path/to/your.template" or
+                              "path:C:\some\path\to\your.template" in case of
+                              Windows. Formats understood by bombardier are:
+
+                                * plain-text (short: pt)
+                                * json (short: j)
 
 Args:
   <url>  Target's URL
+
+For detailed documentation on user-defined templates see
+documentation for package github.com/codesenberg/bombardier/template.
+Link (GoDoc):
+https://godoc.org/github.com/codesenberg/bombardier/template
 */
 package main

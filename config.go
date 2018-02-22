@@ -17,11 +17,17 @@ type config struct {
 	stream                         bool
 	headers                        *headersList
 	timeout                        time.Duration
-	printLatencies, insecure       bool
-	rate                           *uint64
-	clientType                     clientTyp
+	// TODO(codesenberg): printLatencies should probably be
+	// re(named&maked) into printPercentiles or even let
+	// users provide their own percentiles and not just
+	// calculate for [0.5, 0.75, 0.9, 0.99]
+	printLatencies, insecure bool
+	rate                     *uint64
+	clientType               clientTyp
 
 	printIntro, printProgress, printResult bool
+
+	format format
 }
 
 type testTyp int

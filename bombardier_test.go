@@ -45,6 +45,7 @@ func testBombardierShouldFireSpecifiedNumberOfRequests(
 		method:     "GET",
 		body:       "",
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -79,6 +80,7 @@ func testBombardierShouldFinish(clientType clientTyp, t *testing.T) {
 		method:     "GET",
 		body:       "",
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -141,6 +143,7 @@ func testBombardierShouldSendHeaders(clientType clientTyp, t *testing.T) {
 		method:     "GET",
 		body:       "",
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -186,6 +189,7 @@ func testBombardierHTTPCodeRecording(clientType clientTyp, t *testing.T) {
 		method:     "GET",
 		body:       "",
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -235,6 +239,7 @@ func testBombardierTimeoutRecoding(clientType clientTyp, t *testing.T) {
 		method:     "GET",
 		body:       "",
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -272,6 +277,7 @@ func testBombardierThroughputRecording(clientType clientTyp, t *testing.T) {
 		method:     "GET",
 		body:       "",
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -308,6 +314,7 @@ func TestBombardierStatsPrinting(t *testing.T) {
 		printIntro:     true,
 		printProgress:  true,
 		printResult:    true,
+		format:         knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -341,6 +348,7 @@ func TestBombardierErrorIfFailToReadClientCert(t *testing.T) {
 		printLatencies: true,
 		certPath:       "certPath",
 		keyPath:        "keyPath",
+		format:         knownFormat("plain-text"),
 	})
 	if e == nil {
 		t.Fail()
@@ -412,6 +420,7 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 		keyPath:        "testclient.key",
 		insecure:       true,
 		clientType:     clientType,
+		format:         knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -461,6 +470,7 @@ func testBombardierRateLimiting(clientType clientTyp, t *testing.T) {
 		body:       "",
 		rate:       &rate,
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -517,6 +527,7 @@ func testBombardierSendsBody(clientType clientTyp, t *testing.T) {
 		method:     "POST",
 		body:       requestBody,
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -565,6 +576,7 @@ func testBombardierSendsBodyFromFile(clientType clientTyp, t *testing.T) {
 		method:       "POST",
 		bodyFilePath: bodyPath,
 		clientType:   clientType,
+		format:       knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -583,6 +595,7 @@ func TestBombardierFileDoesntExist(t *testing.T) {
 		timeout:      defaultTimeout,
 		method:       "POST",
 		bodyFilePath: bodyPath,
+		format:       knownFormat("plain-text"),
 	})
 	_, ok := e.(*os.PathError)
 	if !ok {
@@ -628,6 +641,7 @@ func testBombardierStreamsBody(clientType clientTyp, t *testing.T) {
 		body:       requestBody,
 		stream:     true,
 		clientType: clientType,
+		format:     knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)
@@ -680,6 +694,7 @@ func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
 		bodyFilePath: bodyPath,
 		stream:       true,
 		clientType:   clientType,
+		format:       knownFormat("plain-text"),
 	})
 	if e != nil {
 		t.Error(e)

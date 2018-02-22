@@ -119,6 +119,12 @@
 			"revisionTime": "2017-02-01T02:35:40Z"
 		},
 		{
+			"checksumSHA1": "eDQ6f1EsNf+frcRO/9XukSEchm8=",
+			"path": "github.com/satori/go.uuid",
+			"revision": "36e9d2ebbde5e3f13ab2e25625fd453271d6522e",
+			"revisionTime": "2018-01-03T17:44:51Z"
+		},
+		{
 			"checksumSHA1": "VCNCWOWM96WHwPmr/f4QhnszNGE=",
 			"path": "github.com/valyala/bytebufferpool",
 			"revision": "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7",

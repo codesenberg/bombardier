@@ -61,6 +61,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -104,6 +105,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -129,6 +131,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:     true,
 				printProgress:  true,
 				printResult:    true,
+				format:         knownFormat("plain-text"),
 			},
 		},
 		{
@@ -154,6 +157,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -182,6 +186,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -221,6 +226,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -256,6 +262,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -291,6 +298,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -315,6 +323,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -335,6 +344,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -355,6 +365,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -385,6 +396,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -410,6 +422,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -428,6 +441,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -472,6 +486,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -516,6 +531,7 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    true,
 				printProgress: false,
 				printResult:   true,
+				format:        knownFormat("plain-text"),
 			},
 		},
 		{
@@ -540,6 +556,127 @@ func TestArgsParsing(t *testing.T) {
 				printIntro:    false,
 				printProgress: false,
 				printResult:   false,
+				format:        knownFormat("plain-text"),
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--format", "plain-text",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--format", "pt",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--format=plain-text",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--format=pt",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-o", "plain-text",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-o", "pt",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+				format:        knownFormat("plain-text"),
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--format", "json",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--format", "j",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--format=json",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--format=j",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-o", "json",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-o", "j",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+				format:        knownFormat("json"),
+			},
+		},
+		{
+			[][]string{
+				{
+					programName,
+					"--format", "path:/path/to/tmpl.txt",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"--format=path:/path/to/tmpl.txt",
+					"https://somehost.somedomain",
+				},
+				{
+					programName,
+					"-o", "path:/path/to/tmpl.txt",
+					"https://somehost.somedomain",
+				},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://somehost.somedomain",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+				format:        userDefinedTemplate("/path/to/tmpl.txt"),
 			},
 		},
 	}
@@ -633,5 +770,23 @@ func TestArgsParsingWithEmptyPrintSpec(t *testing.T) {
 	}
 	if c != emptyConf {
 		t.Fail()
+	}
+}
+
+func TestArgsParsingWithInvalidPrintSpec(t *testing.T) {
+	invalidSpecs := [][]string{
+		{programName, "--format", "noprefix.txt", "somehost.somedomain"},
+		{programName, "--format=noprefix.txt", "somehost.somedomain"},
+		{programName, "-o", "noprefix.txt", "somehost.somedomain"},
+		{programName, "--format", "unknown-format", "somehost.somedomain"},
+		{programName, "--format=unknown-format", "somehost.somedomain"},
+		{programName, "-o", "unknown-format", "somehost.somedomain"},
+	}
+	p := newKingpinParser()
+	for _, is := range invalidSpecs {
+		c, err := p.parse(is)
+		if err == nil || c != emptyConf {
+			t.Errorf("invalid print spec %q parsed correctly", is)
+		}
 	}
 }

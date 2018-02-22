@@ -37,6 +37,8 @@ type kingpinParser struct {
 
 	printSpec *nullableString
 	noPrint   bool
+
+	formatSpec string
 }
 
 func newKingpinParser() argsParser {
@@ -59,6 +61,7 @@ func newKingpinParser() argsParser {
 		clientType:   fhttp,
 		printSpec:    new(nullableString),
 		noPrint:      false,
+		formatSpec:   "plain-text",
 	}
 
 	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
@@ -155,6 +158,19 @@ func newKingpinParser() argsParser {
 		Short('q').
 		BoolVar(&kparser.noPrint)
 
+	app.Flag("format", "Which format to use to output the result. "+
+		"<spec> is either a name (or its shorthand) of some format "+
+		"understood by bombardier or a path to the user-defined template, "+
+		"which uses Go's text/template syntax, prefixed with 'path:' string "+
+		"(without single quotes), i.e. \"path:/some/path/to/your.template\" "+
+		" or \"path:C:\\some\\path\\to\\your.template\" in case of Windows. "+
+		"Formats understood by bombardier are:"+
+		"\n\t* plain-text (short: pt)"+
+		"\n\t* json (short: j)").
+		PlaceHolder("<spec>").
+		Short('o').
+		StringVar(&kparser.formatSpec)
+
 	app.Arg("url", "Target's URL").Required().
 		StringVar(&kparser.url)
 
@@ -178,6 +194,12 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 	if k.noPrint {
 		pi, pp, pr = false, false, false
 	}
+	format := formatFromString(k.formatSpec)
+	if format == nil {
+		return emptyConf, fmt.Errorf(
+			"unknown format or invalid format spec %q", k.formatSpec,
+		)
+	}
 	return config{
 		numConns:       k.numConns,
 		numReqs:        k.numReqs.val,
@@ -198,6 +220,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		printIntro:     pi,
 		printProgress:  pp,
 		printResult:    pr,
+		format:         format,
 	}, nil
 }
 

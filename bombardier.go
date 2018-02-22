@@ -17,6 +17,7 @@ import (
 	"github.com/cheggaaa/pb"
 	fhist "github.com/codesenberg/concurrent/float64/histogram"
 	uhist "github.com/codesenberg/concurrent/uint64/histogram"
+	"github.com/satori/go.uuid"
 )
 
 type bombardier struct {
@@ -54,7 +55,8 @@ type bombardier struct {
 	bar *pb.ProgressBar
 
 	// Output
-	out io.Writer
+	out      io.Writer
+	template *template.Template
 }
 
 func newBombardier(c config) (*bombardier, error) {
@@ -113,11 +115,12 @@ func newBombardier(c config) (*bombardier, error) {
 	} else {
 		pbody = &c.body
 		if c.bodyFilePath != "" {
-			body, err := ioutil.ReadFile(c.bodyFilePath)
+			var bodyBytes []byte
+			bodyBytes, err = ioutil.ReadFile(c.bodyFilePath)
 			if err != nil {
 				return nil, err
 			}
-			sbody := string(body)
+			sbody := string(bodyBytes)
 			pbody = &sbody
 		}
 	}
@@ -143,6 +146,11 @@ func newBombardier(c config) (*bombardier, error) {
 		b.bar.NotPrint = true
 	}
 
+	b.template, err = b.prepareTemplate()
+	if err != nil {
+		return nil, err
+	}
+
 	b.workers.Add(int(c.numConns))
 	b.errors = newErrorMap()
 	b.doneChan = make(chan struct{}, 2)
@@ -163,6 +171,54 @@ func makeHTTPClient(clientType clientTyp, cc *clientOpts) client {
 		cl = newFastHTTPClient(cc)
 	}
 	return cl
+}
+
+func (b *bombardier) prepareTemplate() (*template.Template, error) {
+	var (
+		templateBytes []byte
+		err           error
+	)
+	switch f := b.conf.format.(type) {
+	case knownFormat:
+		templateBytes = f.template()
+	case userDefinedTemplate:
+		templateBytes, err = ioutil.ReadFile(string(f))
+		if err != nil {
+			return nil, err
+		}
+	default:
+		panic("format can't be nil at this point, this is a bug")
+	}
+	outputTemplate, err := template.New("output-template").
+		Funcs(template.FuncMap{
+			"WithLatencies": func() bool {
+				return b.conf.printLatencies
+			},
+			"FormatBinary": formatBinary,
+			"FormatTimeUs": formatTimeUs,
+			"FormatTimeUsUint64": func(us uint64) string {
+				return formatTimeUs(float64(us))
+			},
+			"FloatsToArray": func(ps ...float64) []float64 {
+				return ps
+			},
+			"Multiply": func(num, coeff float64) float64 {
+				return num * coeff
+			},
+			"StringToBytes": func(s string) []byte {
+				return []byte(s)
+			},
+			"UUIDV1": uuid.NewV1,
+			"UUIDV2": uuid.NewV2,
+			"UUIDV3": uuid.NewV3,
+			"UUIDV4": uuid.NewV4,
+			"UUIDV5": uuid.NewV5,
+		}).Parse(string(templateBytes))
+
+	if err != nil {
+		return nil, err
+	}
+	return outputTemplate, nil
 }
 
 func (b *bombardier) writeStatistics(
@@ -367,59 +423,10 @@ func (b *bombardier) gatherInfo() internal.TestInfo {
 
 func (b *bombardier) printStats() {
 	info := b.gatherInfo()
-	tmpl := newPlainTextTemplate(b.conf.printLatencies)
-	err := tmpl.Execute(b.out, info)
+	err := b.template.Execute(b.out, info)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
-}
-
-func newPlainTextTemplate(printLatencies bool) *template.Template {
-	return template.Must(template.New("plain-text").Funcs(template.FuncMap{
-		"WithLatencies": func() bool {
-			return printLatencies
-		},
-		"FormatBinary": formatBinary,
-		"FormatTimeUs": formatTimeUs,
-		"FormatTimeUsUint64": func(us uint64) string {
-			return formatTimeUs(float64(us))
-		},
-		"Percentiles": func() []float64 {
-			return []float64{0.5, 0.75, 0.9, 0.99}
-		},
-		"Multiply": func(num, coeff float64) float64 {
-			return num * coeff
-		},
-	}).Parse(`
-{{- printf "%10v %10v %10v %10v" "Statistics" "Avg" "Stdev" "Max" }}
-{{ with .Result.RequestsStats Percentiles }}
-	{{- printf "  %-10v %10.2f %10.2f %10.2f" "Reqs/sec" .Mean .Stddev .Max -}}
-{{ else }}
-	{{- print "  There wasn't enough data to compute statistics for requests." }}
-{{ end }}
-{{ with .Result.LatenciesStats Percentiles }}
-	{{- printf "  %-10v %10v %10v %10v" "Latency" (FormatTimeUs .Mean) (FormatTimeUs .Stddev) (FormatTimeUs .Max) }}
-	{{- if WithLatencies }}
-  		{{- "\n  Latency Distribution" }}
-		{{- range $pc, $lat := .Percentiles }}
-			{{- printf "\n     %2.0f%% %10s" (Multiply $pc 100) (FormatTimeUsUint64 $lat) -}}
-		{{ end -}}
-	{{ end }}
-{{ else }}
-	{{- print "  There wasn't enough data to compute statistics for latencies." }}
-{{ end -}}
-{{ with .Result -}}
-{{ "  HTTP codes:" }}
-{{ printf "    1xx - %v, 2xx - %v, 3xx - %v, 4xx - %v, 5xx - %v" .Req1XX .Req2XX .Req3XX .Req4XX .Req5XX }}
-	{{- printf "\n    others - %v" .Others }}
-	{{- with .Errors }}
-		{{- "\n  Errors:"}}
-		{{- range . }}
-			{{- printf "\n    %10v - %v" .Error .Count }}
-		{{- end -}}
-	{{ end -}}
-{{ end }}
-{{ printf "  %-10v %10v/s" "Throughput:" (FormatBinary .Result.Throughput)}}`))
 }
 
 func (b *bombardier) redirectOutputTo(out io.Writer) {
