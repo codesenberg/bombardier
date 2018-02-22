@@ -49,6 +49,6 @@ Link to GoDoc for the structure used in template:
 https://godoc.org/github.com/codesenberg/bombardier/internal#TestInfo
 
 Examples of templates can be found in:
-https://github.com/codesenberg/bombardier/blob/master/template.go
+https://github.com/codesenberg/bombardier/blob/master/templates.go
 */
 package template
