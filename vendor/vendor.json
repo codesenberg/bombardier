@@ -53,10 +53,10 @@
 			"revisionTime": "2017-11-18T13:51:32Z"
 		},
 		{
-			"checksumSHA1": "zmPNqTaB8gmE0V9iN6S+JyMvdtk=",
+			"checksumSHA1": "Jx5utgYWogmDwFZuF+v3EQY/vNw=",
 			"path": "github.com/codesenberg/concurrent/float64/histogram",
-			"revision": "fe682250a28364f4d710a52894b5d270d0da4738",
-			"revisionTime": "2017-11-21T10:06:58Z"
+			"revision": "11aa0abba0a25a88c1534958f34ed28debc601fd",
+			"revisionTime": "2018-03-14T16:23:18Z"
 		},
 		{
 			"checksumSHA1": "IG05egTrEyC6gaOjpdOkRqUSk9g=",
@@ -65,10 +65,10 @@
 			"revisionTime": "2017-11-18T13:51:32Z"
 		},
 		{
-			"checksumSHA1": "504xv3Lcj/lpK7RFm+S3togt7ZM=",
+			"checksumSHA1": "E3A5tp+zk44/tE2yOo8nX9Ihwxw=",
 			"path": "github.com/codesenberg/concurrent/uint64/histogram",
-			"revision": "fe682250a28364f4d710a52894b5d270d0da4738",
-			"revisionTime": "2017-11-21T10:06:58Z"
+			"revision": "11aa0abba0a25a88c1534958f34ed28debc601fd",
+			"revisionTime": "2018-03-14T16:23:18Z"
 		},
 		{
 			"checksumSHA1": "fuHy7RqerjuNdQCj/Kn2PiyWo1A=",
