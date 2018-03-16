@@ -37,12 +37,12 @@ func formatFromString(formatSpec string) format {
 const (
 	plainTextTemplate = `
 {{- printf "%10v %10v %10v %10v" "Statistics" "Avg" "Stdev" "Max" }}
-{{ with .Result.RequestsStats (FloatsToArray 0.5 0.75 0.9 0.99) }}
+{{ with .Result.RequestsStats (FloatsToArray 0.5 0.75 0.9 0.95 0.99) }}
 	{{- printf "  %-10v %10.2f %10.2f %10.2f" "Reqs/sec" .Mean .Stddev .Max -}}
 {{ else }}
 	{{- print "  There wasn't enough data to compute statistics for requests." }}
 {{ end }}
-{{ with .Result.LatenciesStats (FloatsToArray 0.5 0.75 0.9 0.99) }}
+{{ with .Result.LatenciesStats (FloatsToArray 0.5 0.75 0.9 0.95 0.99) }}
 	{{- printf "  %-10v %10v %10v %10v" "Latency" (FormatTimeUs .Mean) (FormatTimeUs .Stddev) (FormatTimeUs .Max) }}
 	{{- if WithLatencies }}
   		{{- "\n  Latency Distribution" }}
@@ -138,7 +138,7 @@ const (
 ]
 {{- end -}}
 
-{{- with .LatenciesStats (FloatsToArray 0.5 0.75 0.9 0.99) -}}
+{{- with .LatenciesStats (FloatsToArray 0.5 0.75 0.9 0.95 0.99) -}}
 ,"latency":{"mean":{{ .Mean -}}
 ,"stddev":{{ .Stddev -}}
 ,"max":{{ .Max -}}
@@ -155,7 +155,7 @@ const (
 }
 {{- end -}}
 
-{{- with .RequestsStats (FloatsToArray 0.5 0.75 0.9 0.99) -}}
+{{- with .RequestsStats (FloatsToArray 0.5 0.75 0.9 0.95 0.99) -}}
 ,"rps":{"mean":{{ .Mean -}}
 ,"stddev":{{ .Stddev -}}
 ,"max":{{ .Max -}}
