@@ -23,4 +23,3 @@ _testmain.go
 *.test
 *.prof
 cover.*
-script.lua

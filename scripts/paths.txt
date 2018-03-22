@@ -1,0 +1,7 @@
+/feed.xml
+/contact/
+/about/
+/blog/
+/2015/04/21/nginx-maintenance-mode/
+/2015/01/06/vagrant-workflows/
+/2014/12/10/top-vagrant-plugins/
