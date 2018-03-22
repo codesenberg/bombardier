@@ -18,6 +18,7 @@ import (
 	fhist "github.com/codesenberg/concurrent/float64/histogram"
 	uhist "github.com/codesenberg/concurrent/uint64/histogram"
 	"github.com/satori/go.uuid"
+	"github.com/yuin/gopher-lua"
 )
 
 type bombardier struct {
@@ -42,6 +43,9 @@ type bombardier struct {
 
 	client   client
 	doneChan chan struct{}
+
+	// Lua State
+	l *lua.LState
 
 	// RPS metrics
 	rpl   sync.Mutex
@@ -125,6 +129,13 @@ func newBombardier(c config) (*bombardier, error) {
 		}
 	}
 
+	if c.scriptPath != "" {
+		if _, err := os.Stat(c.scriptPath); err != nil {
+			return nil, err
+		}
+		b.l = lua.NewState()
+	}
+
 	cc := &clientOpts{
 		HTTP2:     false,
 		maxConns:  c.numConns,
@@ -138,6 +149,7 @@ func newBombardier(c config) (*bombardier, error) {
 		bodProd:      bsp,
 		bytesRead:    &b.bytesRead,
 		bytesWritten: &b.bytesWritten,
+		l:            b.l,
 	}
 	b.client = makeHTTPClient(c.clientType, cc)
 
@@ -155,6 +167,12 @@ func newBombardier(c config) (*bombardier, error) {
 	b.errors = newErrorMap()
 	b.doneChan = make(chan struct{}, 2)
 	return b, nil
+}
+
+func (b *bombardier) close() {
+	if b.l != nil {
+		defer b.l.Close()
+	}
 }
 
 func makeHTTPClient(clientType clientTyp, cc *clientOpts) client {
@@ -327,6 +345,14 @@ func (b *bombardier) bombard() {
 	if b.conf.printIntro {
 		b.printIntro()
 	}
+
+	// load lua scripts
+	if b.l != nil {
+		if err := b.l.DoFile(b.conf.scriptPath); err != nil {
+			panic(err)
+		}
+	}
+
 	b.bar.Start()
 	bombardmentBegin := time.Now()
 	b.start = time.Now()
@@ -446,6 +472,8 @@ func main() {
 		os.Exit(exitFailure)
 	}
 	bombardier, err := newBombardier(cfg)
+	defer bombardier.close()
+
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(exitFailure)
