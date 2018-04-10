@@ -164,6 +164,7 @@ func (c *httpClient) do() (
 
 	if c.body != nil {
 		br := strings.NewReader(*c.body)
+		req.ContentLength = int64(len(*c.body))
 		req.Body = ioutil.NopCloser(br)
 	} else {
 		bs, bserr := c.bodProd()
