@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/goware/urlx"
 	"github.com/valyala/fasthttp"
+	lua "github.com/yuin/gopher-lua"
 	"golang.org/x/net/http2"
 )
 
@@ -34,6 +36,8 @@ type clientOpts struct {
 	bodProd bodyStreamProducer
 
 	bytesRead, bytesWritten *int64
+
+	l *lua.LState
 }
 
 type fasthttpClient struct {
@@ -44,6 +48,8 @@ type fasthttpClient struct {
 
 	body    *string
 	bodProd bodyStreamProducer
+
+	l *lua.LState
 }
 
 func newFastHTTPClient(opts *clientOpts) client {
@@ -61,12 +67,20 @@ func newFastHTTPClient(opts *clientOpts) client {
 	c.headers = headersToFastHTTPHeaders(opts.headers)
 	c.url, c.method, c.body = opts.url, opts.method, opts.body
 	c.bodProd = opts.bodProd
+	c.l = opts.l
 	return client(c)
 }
 
 func (c *fasthttpClient) do() (
 	code int, msTaken uint64, err error,
 ) {
+	// Prepare the Request Parameters with lua script
+	if c.l != nil {
+		uri, _ := url.Parse(c.url)
+		uri.Path, c.method, *c.body, _ = executeLuaScript(c.l, uri.Path, c.method, *c.body)
+		c.url = uri.String()
+	}
+
 	// prepare the request
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
@@ -111,6 +125,8 @@ type httpClient struct {
 
 	body    *string
 	bodProd bodyStreamProducer
+
+	l *lua.LState
 }
 
 func newHTTPClient(opts *clientOpts) client {
@@ -146,12 +162,19 @@ func newHTTPClient(opts *clientOpts) client {
 		panic(err)
 	}
 
+	c.l = opts.l
+
 	return client(c)
 }
 
 func (c *httpClient) do() (
 	code int, msTaken uint64, err error,
 ) {
+	// Prepare the Request Parameters with lua script
+	if c.l != nil {
+		c.url.Path, c.method, *c.body, _ = executeLuaScript(c.l, c.url.Path, c.method, *c.body)
+	}
+
 	req := &http.Request{}
 
 	req.Header = c.headers
@@ -216,4 +239,41 @@ func headersToHTTPHeaders(h *headersList) http.Header {
 		headers[header.key] = []string{header.value}
 	}
 	return headers
+}
+
+func executeLuaScript(l *lua.LState, path string, method string, body string) (string, string, string, error) {
+
+	if err := l.CallByParam(lua.P{
+		Fn:      l.GetGlobal("request"), // name of Lua function
+		NRet:    4,                      // number of returned values
+		Protect: true,                   // return err or panic
+	}, lua.LString(path), lua.LString(method), lua.LString(body)); err != nil {
+		return path, method, body, err
+	}
+
+	var err error
+
+	if str, ok := l.Get(-1).(lua.LString); ok {
+		err = fmt.Errorf(str.String())
+	}
+	l.Pop(1)
+
+	if str, ok := l.Get(-1).(lua.LString); ok {
+		body = str.String()
+	}
+	l.Pop(1)
+
+	if str, ok := l.Get(-1).(lua.LString); ok {
+		method = str.String()
+	}
+	l.Pop(1)
+
+	if str, ok := l.Get(-1).(lua.LString); ok {
+		path = str.String()
+
+	}
+	l.Pop(1)
+
+	return path, method, body, err
+
 }

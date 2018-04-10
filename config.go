@@ -17,6 +17,7 @@ type config struct {
 	stream                         bool
 	headers                        *headersList
 	timeout                        time.Duration
+	scriptPath                     string
 	// TODO(codesenberg): printLatencies should probably be
 	// re(named&maked) into printPercentiles or even let
 	// users provide their own percentiles and not just

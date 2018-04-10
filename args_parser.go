@@ -39,6 +39,7 @@ type kingpinParser struct {
 	noPrint   bool
 
 	formatSpec string
+	scriptPath string
 }
 
 func newKingpinParser() argsParser {
@@ -62,6 +63,7 @@ func newKingpinParser() argsParser {
 		printSpec:    new(nullableString),
 		noPrint:      false,
 		formatSpec:   "plain-text",
+		scriptPath:   "",
 	}
 
 	app := kingpin.New("", "Fast cross-platform HTTP benchmarking tool").
@@ -142,6 +144,10 @@ func newKingpinParser() argsParser {
 			return nil
 		}).
 		Bool()
+	app.Flag("scriptPath", "Lua script Path").
+		PlaceHolder("").
+		Short('z').
+		StringVar(&kparser.scriptPath)
 
 	app.Flag(
 		"print", "Specifies what to output. Comma-separated list of values"+
@@ -221,6 +227,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		printProgress:  pp,
 		printResult:    pr,
 		format:         format,
+		scriptPath:     k.scriptPath,
 	}, nil
 }
 
