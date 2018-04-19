@@ -49,7 +49,7 @@ func New(
 }
 
 func (h *Histogram) getShardFor(key float64) *histogramShard {
-	shardNum := int(h.shardFn(key)) % len(h.shards)
+	shardNum := h.shardFn(key) % uint32(len(h.shards))
 	return h.shards[shardNum]
 }
 
