@@ -189,6 +189,11 @@ func (h *RequestHeader) ConnectionUpgrade() bool {
 	return hasHeaderValue(h.Peek("Connection"), strUpgrade)
 }
 
+// PeekCookie is able to returns cookie by a given key from response.
+func (h *ResponseHeader) PeekCookie(key string) []byte {
+	return peekArgStr(h.cookies, key)
+}
+
 // ContentLength returns Content-Length header value.
 //
 // It may be negative:
@@ -241,9 +246,15 @@ func (h *ResponseHeader) mustSkipContentLength() bool {
 // It may be negative:
 // -1 means Transfer-Encoding: chunked.
 func (h *RequestHeader) ContentLength() int {
-	if h.noBody() {
+	if h.ignoreBody() {
 		return 0
 	}
+	return h.realContentLength()
+}
+
+// realContentLength returns the actual Content-Length set in the request,
+// including positive lengths for GET/HEAD requests.
+func (h *RequestHeader) realContentLength() int {
 	h.parseRawHeaders()
 	return h.contentLength
 }
@@ -261,6 +272,12 @@ func (h *RequestHeader) SetContentLength(contentLength int) {
 		h.contentLengthBytes = h.contentLengthBytes[:0]
 		h.h = setArgBytes(h.h, strTransferEncoding, strChunked)
 	}
+}
+
+func (h *ResponseHeader) isCompressibleContentType() bool {
+	contentType := h.ContentType()
+	return bytes.HasPrefix(contentType, strTextSlash) ||
+		bytes.HasPrefix(contentType, strApplicationSlash)
 }
 
 // ContentType returns Content-Type header value.
@@ -465,7 +482,7 @@ func (h *RequestHeader) Method() []byte {
 
 // SetMethod sets HTTP request method.
 func (h *RequestHeader) SetMethod(method string) {
-	h.method = append(h.method, method...)
+	h.method = append(h.method[:0], method...)
 }
 
 // SetMethodBytes sets HTTP request method.
@@ -505,7 +522,7 @@ func (h *RequestHeader) IsGet() bool {
 	return h.isGet
 }
 
-// IsPost returns true if request methos is POST.
+// IsPost returns true if request method is POST.
 func (h *RequestHeader) IsPost() bool {
 	return bytes.Equal(h.Method(), strPost)
 }
@@ -527,6 +544,26 @@ func (h *RequestHeader) IsHead() bool {
 // IsDelete returns true if request method is DELETE.
 func (h *RequestHeader) IsDelete() bool {
 	return bytes.Equal(h.Method(), strDelete)
+}
+
+// IsConnect returns true if request method is CONNECT.
+func (h *RequestHeader) IsConnect() bool {
+	return bytes.Equal(h.Method(), strConnect)
+}
+
+// IsOptions returns true if request method is OPTIONS.
+func (h *RequestHeader) IsOptions() bool {
+	return bytes.Equal(h.Method(), strOptions)
+}
+
+// IsTrace returns true if request method is TRACE.
+func (h *RequestHeader) IsTrace() bool {
+	return bytes.Equal(h.Method(), strTrace)
+}
+
+// IsPatch returns true if request method is PATCH.
+func (h *RequestHeader) IsPatch() bool {
+	return bytes.Equal(h.Method(), strPatch)
 }
 
 // IsHTTP11 returns true if the request is HTTP/1.1.
@@ -1179,6 +1216,8 @@ func (h *ResponseHeader) peek(key []byte) []byte {
 		return peekArgBytes(h.h, key)
 	case "Content-Length":
 		return h.contentLengthBytes
+	case "Set-Cookie":
+		return appendResponseCookieBytes(nil, h.cookies)
 	default:
 		return peekArgBytes(h.h, key)
 	}
@@ -1324,9 +1363,12 @@ func (h *RequestHeader) tryRead(r *bufio.Reader, n int) error {
 	h.resetSkipNormalize()
 	b, err := r.Peek(n)
 	if len(b) == 0 {
-		// treat all errors on the first byte read as EOF
-		if n == 1 || err == io.EOF {
-			return io.EOF
+		if err == io.EOF {
+			return err
+		}
+
+		if err == nil {
+			panic("bufio.Reader.Peek() returned nil, nil")
 		}
 
 		// This is for go 1.6 bug. See https://github.com/golang/go/issues/14121 .
@@ -1425,10 +1467,9 @@ func (h *ResponseHeader) AppendBytes(dst []byte) []byte {
 	dst = append(dst, statusLine(statusCode)...)
 
 	server := h.Server()
-	if len(server) == 0 {
-		server = defaultServerName
+	if len(server) != 0 {
+		dst = appendHeaderLine(dst, strServer, server)
 	}
-	dst = appendHeaderLine(dst, strServer, server)
 	dst = appendHeaderLine(dst, strDate, serverDate.Load().([]byte))
 
 	// Append Content-Type only for non-zero responses
@@ -1518,7 +1559,7 @@ func (h *RequestHeader) AppendBytes(dst []byte) []byte {
 	}
 
 	contentType := h.ContentType()
-	if !h.noBody() {
+	if !h.ignoreBody() {
 		if len(contentType) == 0 {
 			contentType = strPostArgsContentType
 		}
@@ -1572,7 +1613,7 @@ func (h *ResponseHeader) parse(buf []byte) (int, error) {
 	return m + n, nil
 }
 
-func (h *RequestHeader) noBody() bool {
+func (h *RequestHeader) ignoreBody() bool {
 	return h.IsGet() || h.IsHead()
 }
 
@@ -1583,7 +1624,7 @@ func (h *RequestHeader) parse(buf []byte) (int, error) {
 	}
 
 	var n int
-	if !h.noBody() || h.noHTTP11 {
+	if !h.ignoreBody() || h.noHTTP11 {
 		n, err = h.parseHeaders(buf[m:])
 		if err != nil {
 			return 0, err
@@ -1732,36 +1773,49 @@ func (h *ResponseHeader) parseHeaders(buf []byte) (int, error) {
 	var err error
 	var kv *argsKV
 	for s.next() {
-		switch string(s.key) {
-		case "Content-Type":
-			h.contentType = append(h.contentType[:0], s.value...)
-		case "Server":
-			h.server = append(h.server[:0], s.value...)
-		case "Content-Length":
-			if h.contentLength != -1 {
-				if h.contentLength, err = parseContentLength(s.value); err != nil {
-					h.contentLength = -2
-				} else {
-					h.contentLengthBytes = append(h.contentLengthBytes[:0], s.value...)
+		if len(s.key) > 0 {
+			switch s.key[0] | 0x20 {
+			case 'c':
+				if caseInsensitiveCompare(s.key, strContentType) {
+					h.contentType = append(h.contentType[:0], s.value...)
+					continue
+				} else if caseInsensitiveCompare(s.key, strContentLength) {
+					if h.contentLength != -1 {
+						if h.contentLength, err = parseContentLength(s.value); err != nil {
+							h.contentLength = -2
+						} else {
+							h.contentLengthBytes = append(h.contentLengthBytes[:0], s.value...)
+						}
+					}
+					continue
+				} else if caseInsensitiveCompare(s.key, strConnection) {
+					if bytes.Equal(s.value, strClose) {
+						h.connectionClose = true
+					} else {
+						h.connectionClose = false
+						h.h = appendArgBytes(h.h, s.key, s.value)
+					}
+					continue
+				}
+			case 's':
+				if caseInsensitiveCompare(s.key, strServer) {
+					h.server = append(h.server[:0], s.value...)
+					continue
+				} else if caseInsensitiveCompare(s.key, strSetCookie) {
+					h.cookies, kv = allocArg(h.cookies)
+					kv.key = getCookieKey(kv.key, s.value)
+					kv.value = append(kv.value[:0], s.value...)
+					continue
+				}
+			case 't':
+				if caseInsensitiveCompare(s.key, strTransferEncoding) {
+					if !bytes.Equal(s.value, strIdentity) {
+						h.contentLength = -1
+						h.h = setArgBytes(h.h, strTransferEncoding, strChunked)
+					}
+					continue
 				}
 			}
-		case "Transfer-Encoding":
-			if !bytes.Equal(s.value, strIdentity) {
-				h.contentLength = -1
-				h.h = setArgBytes(h.h, strTransferEncoding, strChunked)
-			}
-		case "Set-Cookie":
-			h.cookies, kv = allocArg(h.cookies)
-			kv.key = getCookieKey(kv.key, s.value)
-			kv.value = append(kv.value[:0], s.value...)
-		case "Connection":
-			if bytes.Equal(s.value, strClose) {
-				h.connectionClose = true
-			} else {
-				h.connectionClose = false
-				h.h = appendArgBytes(h.h, s.key, s.value)
-			}
-		default:
 			h.h = appendArgBytes(h.h, s.key, s.value)
 		}
 	}
@@ -1794,36 +1848,51 @@ func (h *RequestHeader) parseHeaders(buf []byte) (int, error) {
 	s.disableNormalizing = h.disableNormalizing
 	var err error
 	for s.next() {
-		switch string(s.key) {
-		case "Host":
-			h.host = append(h.host[:0], s.value...)
-		case "User-Agent":
-			h.userAgent = append(h.userAgent[:0], s.value...)
-		case "Content-Type":
-			h.contentType = append(h.contentType[:0], s.value...)
-		case "Content-Length":
-			if h.contentLength != -1 {
-				if h.contentLength, err = parseContentLength(s.value); err != nil {
-					h.contentLength = -2
-				} else {
-					h.contentLengthBytes = append(h.contentLengthBytes[:0], s.value...)
+		if len(s.key) > 0 {
+			switch s.key[0] | 0x20 {
+			case 'h':
+				if caseInsensitiveCompare(s.key, strHost) {
+					h.host = append(h.host[:0], s.value...)
+					continue
+				}
+			case 'u':
+				if caseInsensitiveCompare(s.key, strUserAgent) {
+					h.userAgent = append(h.userAgent[:0], s.value...)
+					continue
+				}
+			case 'c':
+				if caseInsensitiveCompare(s.key, strContentType) {
+					h.contentType = append(h.contentType[:0], s.value...)
+					continue
+				} else if caseInsensitiveCompare(s.key, strContentLength) {
+					if h.contentLength != -1 {
+						if h.contentLength, err = parseContentLength(s.value); err != nil {
+							h.contentLength = -2
+						} else {
+							h.contentLengthBytes = append(h.contentLengthBytes[:0], s.value...)
+						}
+					}
+					continue
+				} else if caseInsensitiveCompare(s.key, strConnection) {
+					if bytes.Equal(s.value, strClose) {
+						h.connectionClose = true
+					} else {
+						h.connectionClose = false
+						h.h = appendArgBytes(h.h, s.key, s.value)
+					}
+					continue
+				}
+			case 't':
+				if caseInsensitiveCompare(s.key, strTransferEncoding) {
+					if !bytes.Equal(s.value, strIdentity) {
+						h.contentLength = -1
+						h.h = setArgBytes(h.h, strTransferEncoding, strChunked)
+					}
+					continue
 				}
 			}
-		case "Transfer-Encoding":
-			if !bytes.Equal(s.value, strIdentity) {
-				h.contentLength = -1
-				h.h = setArgBytes(h.h, strTransferEncoding, strChunked)
-			}
-		case "Connection":
-			if bytes.Equal(s.value, strClose) {
-				h.connectionClose = true
-			} else {
-				h.connectionClose = false
-				h.h = appendArgBytes(h.h, s.key, s.value)
-			}
-		default:
-			h.h = appendArgBytes(h.h, s.key, s.value)
 		}
+		h.h = appendArgBytes(h.h, s.key, s.value)
 	}
 	if s.err != nil {
 		h.connectionClose = true
@@ -1831,10 +1900,6 @@ func (h *RequestHeader) parseHeaders(buf []byte) (int, error) {
 	}
 
 	if h.contentLength < 0 {
-		h.contentLengthBytes = h.contentLengthBytes[:0]
-	}
-	if h.noBody() {
-		h.contentLength = 0
 		h.contentLengthBytes = h.contentLengthBytes[:0]
 	}
 	if h.noHTTP11 && !h.connectionClose {
@@ -2008,19 +2073,21 @@ func normalizeHeaderKey(b []byte, disableNormalizing bool) {
 	}
 
 	n := len(b)
-	up := true
-	for i := 0; i < n; i++ {
-		switch b[i] {
-		case '-':
-			up = true
-		default:
-			if up {
-				up = false
-				uppercaseByte(&b[i])
-			} else {
-				lowercaseByte(&b[i])
+	if n == 0 {
+		return
+	}
+
+	b[0] = toUpperTable[b[0]]
+	for i := 1; i < n; i++ {
+		p := &b[i]
+		if *p == '-' {
+			i++
+			if i < n {
+				b[i] = toUpperTable[b[i]]
 			}
+			continue
 		}
+		*p = toLowerTable[*p]
 	}
 }
 
