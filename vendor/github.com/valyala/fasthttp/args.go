@@ -287,11 +287,14 @@ func (a *Args) GetUfloatOrZero(key string) float64 {
 
 // GetBool returns boolean value for the given key.
 //
-// true is returned for '1', 'y' and 'yes' values,
+// true is returned for "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes",
 // otherwise false is returned.
 func (a *Args) GetBool(key string) bool {
-	switch string(a.Peek(key)) {
-	case "1", "y", "yes":
+	switch b2s(a.Peek(key)) {
+	// Support the same true cases as strconv.ParseBool
+	// See: https://github.com/golang/go/blob/4e1b11e2c9bdb0ddea1141eed487be1a626ff5be/src/strconv/atob.go#L12
+	// and Y and Yes versions.
+	case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
 		return true
 	default:
 		return false
@@ -428,15 +431,15 @@ func (s *argsScanner) next(kv *argsKV) bool {
 		case '=':
 			if isKey {
 				isKey = false
-				kv.key = decodeArg(kv.key, s.b[:i], true)
+				kv.key = decodeArgAppend(kv.key[:0], s.b[:i])
 				k = i + 1
 			}
 		case '&':
 			if isKey {
-				kv.key = decodeArg(kv.key, s.b[:i], true)
+				kv.key = decodeArgAppend(kv.key[:0], s.b[:i])
 				kv.value = kv.value[:0]
 			} else {
-				kv.value = decodeArg(kv.value, s.b[k:i], true)
+				kv.value = decodeArgAppend(kv.value[:0], s.b[k:i])
 			}
 			s.b = s.b[i+1:]
 			return true
@@ -444,36 +447,71 @@ func (s *argsScanner) next(kv *argsKV) bool {
 	}
 
 	if isKey {
-		kv.key = decodeArg(kv.key, s.b, true)
+		kv.key = decodeArgAppend(kv.key[:0], s.b)
 		kv.value = kv.value[:0]
 	} else {
-		kv.value = decodeArg(kv.value, s.b[k:], true)
+		kv.value = decodeArgAppend(kv.value[:0], s.b[k:])
 	}
 	s.b = s.b[len(s.b):]
 	return true
 }
 
-func decodeArg(dst, src []byte, decodePlus bool) []byte {
-	return decodeArgAppend(dst[:0], src, decodePlus)
-}
+func decodeArgAppend(dst, src []byte) []byte {
+	if bytes.IndexByte(src, '%') < 0 && bytes.IndexByte(src, '+') < 0 {
+		// fast path: src doesn't contain encoded chars
+		return append(dst, src...)
+	}
 
-func decodeArgAppend(dst, src []byte, decodePlus bool) []byte {
-	for i, n := 0, len(src); i < n; i++ {
+	// slow path
+	for i := 0; i < len(src); i++ {
 		c := src[i]
 		if c == '%' {
-			if i+2 >= n {
+			if i+2 >= len(src) {
 				return append(dst, src[i:]...)
 			}
-			x1 := hexbyte2int(src[i+1])
-			x2 := hexbyte2int(src[i+2])
-			if x1 < 0 || x2 < 0 {
-				dst = append(dst, c)
+			x2 := hex2intTable[src[i+2]]
+			x1 := hex2intTable[src[i+1]]
+			if x1 == 16 || x2 == 16 {
+				dst = append(dst, '%')
 			} else {
-				dst = append(dst, byte(x1<<4|x2))
+				dst = append(dst, x1<<4|x2)
 				i += 2
 			}
-		} else if decodePlus && c == '+' {
+		} else if c == '+' {
 			dst = append(dst, ' ')
+		} else {
+			dst = append(dst, c)
+		}
+	}
+	return dst
+}
+
+// decodeArgAppendNoPlus is almost identical to decodeArgAppend, but it doesn't
+// substitute '+' with ' '.
+//
+// The function is copy-pasted from decodeArgAppend due to the performance
+// reasons only.
+func decodeArgAppendNoPlus(dst, src []byte) []byte {
+	if bytes.IndexByte(src, '%') < 0 {
+		// fast path: src doesn't contain encoded chars
+		return append(dst, src...)
+	}
+
+	// slow path
+	for i := 0; i < len(src); i++ {
+		c := src[i]
+		if c == '%' {
+			if i+2 >= len(src) {
+				return append(dst, src[i:]...)
+			}
+			x2 := hex2intTable[src[i+2]]
+			x1 := hex2intTable[src[i+1]]
+			if x1 == 16 || x2 == 16 {
+				dst = append(dst, '%')
+			} else {
+				dst = append(dst, x1<<4|x2)
+				i += 2
+			}
 		} else {
 			dst = append(dst, c)
 		}

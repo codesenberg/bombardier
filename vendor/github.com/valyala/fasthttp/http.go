@@ -279,6 +279,8 @@ func (w *requestBodyWriter) Write(p []byte) (int, error) {
 }
 
 // Body returns response body.
+//
+// The returned body is valid until the response modification.
 func (resp *Response) Body() []byte {
 	if resp.bodyStream != nil {
 		bodyBuf := resp.bodyBuffer()
@@ -520,6 +522,8 @@ func (req *Request) SwapBody(body []byte) []byte {
 }
 
 // Body returns request body.
+//
+// The returned body is valid until the request modification.
 func (req *Request) Body() []byte {
 	if req.bodyStream != nil {
 		bodyBuf := req.bodyBuffer()
@@ -718,7 +722,7 @@ func marshalMultipartForm(f *multipart.Form, boundary string) ([]byte, error) {
 // boundary to w.
 func WriteMultipartForm(w io.Writer, f *multipart.Form, boundary string) error {
 	// Do not care about memory allocations here, since multipart
-	// form processing is slooow.
+	// form processing is slow.
 	if len(boundary) == 0 {
 		panic("BUG: form boundary cannot be empty")
 	}
@@ -877,10 +881,6 @@ func (req *Request) readLimitBody(r *bufio.Reader, maxBodySize int, getOnly bool
 		return errGetOnly
 	}
 
-	if req.Header.noBody() {
-		return nil
-	}
-
 	if req.MayContinue() {
 		// 'Expect: 100-continue' header found. Let the caller deciding
 		// whether to read request body or
@@ -914,7 +914,7 @@ func (req *Request) MayContinue() bool {
 // then ErrBodyTooLarge is returned.
 func (req *Request) ContinueReadBody(r *bufio.Reader, maxBodySize int) error {
 	var err error
-	contentLength := req.Header.ContentLength()
+	contentLength := req.Header.realContentLength()
 	if contentLength > 0 {
 		if maxBodySize > 0 && contentLength > maxBodySize {
 			return ErrBodyTooLarge
@@ -1105,7 +1105,7 @@ func (req *Request) Write(w *bufio.Writer) error {
 		req.Header.SetMultipartFormBoundary(req.multipartFormBoundary)
 	}
 
-	hasBody := !req.Header.noBody()
+	hasBody := !req.Header.ignoreBody()
 	if hasBody {
 		req.Header.SetContentLength(len(body))
 	}
@@ -1138,6 +1138,7 @@ func (resp *Response) WriteGzip(w *bufio.Writer) error {
 //     * CompressBestSpeed
 //     * CompressBestCompression
 //     * CompressDefaultCompression
+//     * CompressHuffmanOnly
 //
 // The method gzips response body and sets 'Content-Encoding: gzip'
 // header before writing response to w.
@@ -1168,6 +1169,7 @@ func (resp *Response) WriteDeflate(w *bufio.Writer) error {
 //     * CompressBestSpeed
 //     * CompressBestCompression
 //     * CompressDefaultCompression
+//     * CompressHuffmanOnly
 //
 // The method deflates response body and sets 'Content-Encoding: deflate'
 // header before writing response to w.
@@ -1187,30 +1189,42 @@ func (resp *Response) gzipBody(level int) error {
 		return nil
 	}
 
-	// Do not care about memory allocations here, since gzip is slow
-	// and allocates a lot of memory by itself.
+	if !resp.Header.isCompressibleContentType() {
+		// The content-type cannot be compressed.
+		return nil
+	}
+
 	if resp.bodyStream != nil {
+		// Reset Content-Length to -1, since it is impossible
+		// to determine body size beforehand of streamed compression.
+		// For https://github.com/valyala/fasthttp/issues/176 .
+		resp.Header.SetContentLength(-1)
+
+		// Do not care about memory allocations here, since gzip is slow
+		// and allocates a lot of memory by itself.
 		bs := resp.bodyStream
 		resp.bodyStream = NewStreamReader(func(sw *bufio.Writer) {
-			zw := acquireGzipWriter(sw, level)
+			zw := acquireStacklessGzipWriter(sw, level)
 			fw := &flushWriter{
 				wf: zw,
 				bw: sw,
 			}
 			copyZeroAlloc(fw, bs)
-			releaseGzipWriter(zw)
+			releaseStacklessGzipWriter(zw, level)
 			if bsc, ok := bs.(io.Closer); ok {
 				bsc.Close()
 			}
 		})
 	} else {
-		w := responseBodyPool.Get()
-		zw := acquireGzipWriter(w, level)
-		_, err := zw.Write(resp.bodyBytes())
-		releaseGzipWriter(zw)
-		if err != nil {
-			return err
+		bodyBytes := resp.bodyBytes()
+		if len(bodyBytes) < minCompressLen {
+			// There is no sense in spending CPU time on small body compression,
+			// since there is a very high probability that the compressed
+			// body size will be bigger than the original body size.
+			return nil
 		}
+		w := responseBodyPool.Get()
+		w.B = AppendGzipBytesLevel(w.B, bodyBytes, level)
 
 		// Hack: swap resp.body with w.
 		if resp.body != nil {
@@ -1229,30 +1243,42 @@ func (resp *Response) deflateBody(level int) error {
 		return nil
 	}
 
-	// Do not care about memory allocations here, since flate is slow
-	// and allocates a lot of memory by itself.
+	if !resp.Header.isCompressibleContentType() {
+		// The content-type cannot be compressed.
+		return nil
+	}
+
 	if resp.bodyStream != nil {
+		// Reset Content-Length to -1, since it is impossible
+		// to determine body size beforehand of streamed compression.
+		// For https://github.com/valyala/fasthttp/issues/176 .
+		resp.Header.SetContentLength(-1)
+
+		// Do not care about memory allocations here, since flate is slow
+		// and allocates a lot of memory by itself.
 		bs := resp.bodyStream
 		resp.bodyStream = NewStreamReader(func(sw *bufio.Writer) {
-			zw := acquireFlateWriter(sw, level)
+			zw := acquireStacklessDeflateWriter(sw, level)
 			fw := &flushWriter{
 				wf: zw,
 				bw: sw,
 			}
 			copyZeroAlloc(fw, bs)
-			releaseFlateWriter(zw)
+			releaseStacklessDeflateWriter(zw, level)
 			if bsc, ok := bs.(io.Closer); ok {
 				bsc.Close()
 			}
 		})
 	} else {
-		w := responseBodyPool.Get()
-		zw := acquireFlateWriter(w, level)
-		_, err := zw.Write(resp.bodyBytes())
-		releaseFlateWriter(zw)
-		if err != nil {
-			return err
+		bodyBytes := resp.bodyBytes()
+		if len(bodyBytes) < minCompressLen {
+			// There is no sense in spending CPU time on small body compression,
+			// since there is a very high probability that the compressed
+			// body size will be bigger than the original body size.
+			return nil
 		}
+		w := responseBodyPool.Get()
+		w.B = AppendDeflateBytesLevel(w.B, bodyBytes, level)
 
 		// Hack: swap resp.body with w.
 		if resp.body != nil {
@@ -1263,6 +1289,9 @@ func (resp *Response) deflateBody(level int) error {
 	resp.Header.SetCanonical(strContentEncoding, strDeflate)
 	return nil
 }
+
+// Bodies with sizes smaller than minCompressLen aren't compressed at all
+const minCompressLen = 200
 
 type writeFlusher interface {
 	io.Writer
@@ -1650,14 +1679,21 @@ func parseChunkSize(r *bufio.Reader) (int, error) {
 	if err != nil {
 		return -1, err
 	}
+	for {
+		c, err := r.ReadByte()
+		if err != nil {
+			return -1, fmt.Errorf("cannot read '\r' char at the end of chunk size: %s", err)
+		}
+		// Skip any trailing whitespace after chunk size.
+		if c == ' ' {
+			continue
+		}
+		if c != '\r' {
+			return -1, fmt.Errorf("unexpected char %q at the end of chunk size. Expected %q", c, '\r')
+		}
+		break
+	}
 	c, err := r.ReadByte()
-	if err != nil {
-		return -1, fmt.Errorf("cannot read '\r' char at the end of chunk size: %s", err)
-	}
-	if c != '\r' {
-		return -1, fmt.Errorf("unexpected char %q at the end of chunk size. Expected %q", c, '\r')
-	}
-	c, err = r.ReadByte()
 	if err != nil {
 		return -1, fmt.Errorf("cannot read '\n' char at the end of chunk size: %s", err)
 	}

@@ -131,22 +131,22 @@
 			"revisionTime": "2016-08-17T18:16:52Z"
 		},
 		{
-			"checksumSHA1": "FLwwo6xSPTxfslxtHur3rObQGIc=",
+			"checksumSHA1": "rt7y2p8wgFVB7c86CZa+xA2+h3k=",
 			"path": "github.com/valyala/fasthttp",
-			"revision": "b69eba7101fa6c66ba4db0641968a401c9f4f148",
-			"revisionTime": "2017-01-30T17:47:15Z"
+			"revision": "5c41b44ca750470fda05a02eb0beaeb2153103a9",
+			"revisionTime": "2018-09-11T18:26:03Z"
 		},
 		{
-			"checksumSHA1": "5uRoLFE7IJG1AWHQ6q4wAs2V8Vg=",
+			"checksumSHA1": "qjeRbXwbdz/tHhisllEwhTEB3kY=",
 			"path": "github.com/valyala/fasthttp/fasthttputil",
-			"revision": "b69eba7101fa6c66ba4db0641968a401c9f4f148",
-			"revisionTime": "2017-01-30T17:47:15Z"
+			"revision": "5c41b44ca750470fda05a02eb0beaeb2153103a9",
+			"revisionTime": "2018-09-11T18:26:03Z"
 		},
 		{
-			"checksumSHA1": "HxVXqzvvT7u4OssX7OeOiKlClZU=",
+			"checksumSHA1": "XXd4XI5F0duiRD/a0SHq2V8hdFM=",
 			"path": "github.com/valyala/fasthttp/stackless",
-			"revision": "b69eba7101fa6c66ba4db0641968a401c9f4f148",
-			"revisionTime": "2017-01-30T17:47:15Z"
+			"revision": "5c41b44ca750470fda05a02eb0beaeb2153103a9",
+			"revisionTime": "2018-09-11T18:26:03Z"
 		},
 		{
 			"checksumSHA1": "HwLsnapk27meOcqcx4G2iaAysq4=",
