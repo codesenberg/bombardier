@@ -366,27 +366,6 @@ func TestInvalidHTTPMethodError(t *testing.T) {
 	}
 }
 
-func TestParsingOfURLsWithoutScheme(t *testing.T) {
-	c := config{
-		numConns: defaultNumberOfConns,
-		numReqs:  nil,
-		duration: nil,
-		url:      "localhost:8080",
-		headers:  new(headersList),
-		timeout:  defaultTimeout,
-		method:   "GET",
-		body:     "",
-	}
-	if err := c.checkArgs(); err != nil {
-		t.Error(err)
-		return
-	}
-	exp := "http://localhost:8080"
-	if act := c.url; act != exp {
-		t.Error(exp, act)
-	}
-}
-
 func TestClientTypToStringConversion(t *testing.T) {
 	expectations := []struct {
 		in  clientTyp

@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goware/urlx"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/net/http2"
 )
@@ -140,7 +139,7 @@ func newHTTPClient(opts *clientOpts) client {
 	c.headers = headersToHTTPHeaders(opts.headers)
 	c.method, c.body, c.bodProd = opts.method, opts.body, opts.bodProd
 	var err error
-	c.url, err = urlx.Parse(opts.url)
+	c.url, err = url.Parse(opts.url)
 	if err != nil {
 		// opts.url guaranteed to be valid at this point
 		panic(err)
