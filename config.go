@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"time"
-
-	"github.com/goware/urlx"
 )
 
 type config struct {
@@ -84,7 +83,7 @@ func (c *config) testType() testTyp {
 }
 
 func (c *config) checkURL() error {
-	url, err := urlx.Parse(c.url)
+	url, err := url.Parse(c.url)
 	if err != nil {
 		return err
 	}
