@@ -51,6 +51,41 @@ func TestArgsParsing(t *testing.T) {
 		out config
 	}{
 		{
+			[][]string{
+				{programName, ":8080"},
+				{programName, "localhost:8080"},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "http://localhost:8080",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+				format:        knownFormat("plain-text"),
+			},
+		},
+		{
+			[][]string{
+				{programName, "https://"},
+				{programName, "https://:443"},
+				{programName, "https://localhost"},
+			},
+			config{
+				numConns:      defaultNumberOfConns,
+				timeout:       defaultTimeout,
+				headers:       new(headersList),
+				method:        "GET",
+				url:           "https://localhost:443",
+				printIntro:    true,
+				printProgress: true,
+				printResult:   true,
+				format:        knownFormat("plain-text"),
+			},
+		},
+		{
 			[][]string{{programName, "https://somehost.somedomain"}},
 			config{
 				numConns:      defaultNumberOfConns,
@@ -787,6 +822,21 @@ func TestArgsParsingWithInvalidPrintSpec(t *testing.T) {
 		c, err := p.parse(is)
 		if err == nil || c != emptyConf {
 			t.Errorf("invalid print spec %q parsed correctly", is)
+		}
+	}
+}
+
+func TestTryParseUrl(t *testing.T) {
+	invalid := []string{
+		"ftp://bla:89",
+		"http://bla:bla:bla",
+		"htp:/bla:bla:bla",
+	}
+
+	for _, url := range invalid {
+		_, err := tryParseURL(url)
+		if err == nil {
+			t.Errorf("%q is not a valid URL", url)
 		}
 	}
 }

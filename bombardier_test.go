@@ -703,3 +703,41 @@ func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
 	b.disableOutput()
 	b.bombard()
 }
+
+func TestBombardierShouldSendCustomHostHeader(t *testing.T) {
+	testAllClients(t, testBombardierShouldSendCustomHostHeader)
+}
+
+func testBombardierShouldSendCustomHostHeader(
+	clientType clientTyp, t *testing.T,
+) {
+	host := "custom-host"
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if r.Host != host {
+				t.Errorf("Host must be %q, but it's %q", host, r.Host)
+			}
+		}),
+	)
+	defer s.Close()
+	numReqs := uint64(100)
+	headers := headersList([]header{
+		{"Host", host},
+	})
+	b, e := newBombardier(config{
+		numConns:   defaultNumberOfConns,
+		numReqs:    &numReqs,
+		url:        s.URL,
+		headers:    &headers,
+		timeout:    defaultTimeout,
+		method:     "GET",
+		body:       "",
+		clientType: clientType,
+		format:     knownFormat("plain-text"),
+	})
+	if e != nil {
+		t.Error(e)
+	}
+	b.disableOutput()
+	b.bombard()
+}
