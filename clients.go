@@ -53,7 +53,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 		panic(err)
 	}
 	c.host = u.Host
-	c.requestURI = "/" + u.Path + "?" + u.RawQuery
+	c.requestURI = u.RequestURI()
 	c.client = &fasthttp.HostClient{
 		Addr:                          u.Host,
 		IsTLS:                         u.Scheme == "https",
