@@ -64,7 +64,7 @@ const (
 		{{- end -}}
 	{{ end -}}
 {{ end }}
-{{ printf "  %-10v %10v/s" "Throughput:" (FormatBinary .Result.Throughput)}}`
+{{ printf "  %-10v %10v/s\n" "Throughput:" (FormatBinary .Result.Throughput)}}`
 	jsonTemplate = `{"spec":{
 {{- with .Spec -}}
 "numberOfConnections":{{ .NumberOfConnections }}
