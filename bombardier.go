@@ -70,6 +70,7 @@ func newBombardier(c config) (*bombardier, error) {
 
 	if b.conf.testType() == counted {
 		b.bar = pb.New64(int64(*b.conf.numReqs))
+		b.bar.ShowSpeed = true
 	} else if b.conf.testType() == timed {
 		b.bar = pb.New64(b.conf.duration.Nanoseconds() / 1e9)
 		b.bar.ShowCounters = false
