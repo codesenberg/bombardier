@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/gzip"
+	"github.com/valyala/bytebufferpool"
 )
 
 // ServeFileBytesUncompressed returns HTTP response containing file contents
@@ -139,12 +140,12 @@ func NewVHostPathRewriter(slashesCount int) PathRewriteFunc {
 		if len(host) == 0 {
 			host = strInvalidHost
 		}
-		b := AcquireByteBuffer()
+		b := bytebufferpool.Get()
 		b.B = append(b.B, '/')
 		b.B = append(b.B, host...)
 		b.B = append(b.B, path...)
 		ctx.URI().SetPathBytes(b.B)
-		ReleaseByteBuffer(b)
+		bytebufferpool.Put(b)
 
 		return ctx.Path()
 	}
@@ -823,7 +824,10 @@ func (h *fsHandler) handleRequest(ctx *RequestCtx) {
 			}
 		}
 	}
-	ctx.SetContentType(ff.contentType)
+	hdr.noDefaultContentType = true
+	if len(hdr.ContentType()) == 0 {
+		ctx.SetContentType(ff.contentType)
+	}
 	ctx.SetStatusCode(statusCode)
 }
 
@@ -912,7 +916,7 @@ var (
 )
 
 func (h *fsHandler) createDirIndex(base *URI, dirPath string, mustCompress bool) (*fsFile, error) {
-	w := &ByteBuffer{}
+	w := &bytebufferpool.ByteBuffer{}
 
 	basePathEscaped := html.EscapeString(string(base.Path()))
 	fmt.Fprintf(w, "<html><head><title>%s</title><style>.dir { font-weight: bold }</style></head><body>", basePathEscaped)
@@ -939,7 +943,7 @@ func (h *fsHandler) createDirIndex(base *URI, dirPath string, mustCompress bool)
 	}
 
 	fm := make(map[string]os.FileInfo, len(fileinfos))
-	var filenames []string
+	filenames := make([]string, 0, len(fileinfos))
 	for _, fi := range fileinfos {
 		name := fi.Name()
 		if strings.HasSuffix(name, h.compressedFileSuffix) {
@@ -954,7 +958,7 @@ func (h *fsHandler) createDirIndex(base *URI, dirPath string, mustCompress bool)
 	base.CopyTo(&u)
 	u.Update(string(u.Path()) + "/")
 
-	sort.Sort(sort.StringSlice(filenames))
+	sort.Strings(filenames)
 	for _, name := range filenames {
 		u.Update(name)
 		pathEscaped := html.EscapeString(string(u.Path()))
@@ -972,7 +976,7 @@ func (h *fsHandler) createDirIndex(base *URI, dirPath string, mustCompress bool)
 	fmt.Fprintf(w, "</ul></body></html>")
 
 	if mustCompress {
-		var zbuf ByteBuffer
+		var zbuf bytebufferpool.ByteBuffer
 		zbuf.B = AppendGzipBytesLevel(zbuf.B, w.B, CompressDefaultCompression)
 		w = &zbuf
 	}

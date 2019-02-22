@@ -125,10 +125,10 @@
 			"revisionTime": "2016-08-17T18:16:52Z"
 		},
 		{
-			"checksumSHA1": "rt7y2p8wgFVB7c86CZa+xA2+h3k=",
+			"checksumSHA1": "w+wlccEqBM2sxzbZ8P3uijhi8kA=",
 			"path": "github.com/valyala/fasthttp",
-			"revision": "5c41b44ca750470fda05a02eb0beaeb2153103a9",
-			"revisionTime": "2018-09-11T18:26:03Z"
+			"revision": "ed3793a1e1602989ba50bd20823e8521a4da84af",
+			"revisionTime": "2019-02-17T10:11:45Z"
 		},
 		{
 			"checksumSHA1": "qjeRbXwbdz/tHhisllEwhTEB3kY=",

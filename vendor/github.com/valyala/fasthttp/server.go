@@ -2,6 +2,7 @@ package fasthttp
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -17,6 +18,12 @@ import (
 )
 
 var errNoCertOrKeyProvided = errors.New("Cert or key has not provided")
+
+var (
+	// ErrAlreadyServing is returned when calling Serve on a Server
+	// that is already serving connections.
+	ErrAlreadyServing = errors.New("Server is already serving connections")
+)
 
 // ServeConn serves HTTP requests from the given connection
 // using the given handler.
@@ -128,6 +135,9 @@ func ListenAndServeTLSEmbed(addr string, certData, keyData []byte, handler Reque
 // must be limited.
 type RequestHandler func(ctx *RequestCtx)
 
+// ServeHandler must process tls.Config.NextProto negotiated requests.
+type ServeHandler func(c net.Conn) error
+
 // Server implements HTTP server.
 //
 // Default Server settings should satisfy the majority of Server users.
@@ -141,7 +151,21 @@ type Server struct {
 	noCopy noCopy
 
 	// Handler for processing incoming requests.
+	//
+	// Take into account that no `panic` recovery is done by `fasthttp` (thus any `panic` will take down the entire server).
+	// Instead the user should use `recover` to handle these situations.
 	Handler RequestHandler
+
+	// ErrorHandler for returning a response in case of an error while receiving or parsing the request.
+	//
+	// The following is a non-exhaustive list of errors that can be expected as argument:
+	//   * io.EOF
+	//   * io.ErrUnexpectedEOF
+	//   * ErrGetOnly
+	//   * ErrSmallBuffer
+	//   * ErrBodyTooLarge
+	//   * ErrBrokenChunks
+	ErrorHandler func(ctx *RequestCtx, err error)
 
 	// Server name for sending in response headers.
 	//
@@ -213,6 +237,18 @@ type Server struct {
 	// By default keep-alive connection lifetime is unlimited.
 	MaxKeepaliveDuration time.Duration
 
+	// Whether to enable tcp keep-alive connections.
+	//
+	// Whether the operating system should send tcp keep-alive messages on the tcp connection.
+	//
+	// By default tcp keep-alive connections are disabled.
+	TCPKeepalive bool
+
+	// Period between tcp keep-alive messages.
+	//
+	// TCP keep-alive period is determined by operation system by default.
+	TCPKeepalivePeriod time.Duration
+
 	// Maximum request body size.
 	//
 	// The server rejects requests with bodies exceeding this limit.
@@ -267,6 +303,11 @@ type Server struct {
 	//     * cONTENT-lenGTH -> Content-Length
 	DisableHeaderNamesNormalizing bool
 
+	// SleepWhenConcurrencyLimitsExceeded is a duration to be slept of if
+	// the concurrency limit in exceeded (default [when is 0]: don't sleep
+	// and accept new connections immidiatelly).
+	SleepWhenConcurrencyLimitsExceeded time.Duration
+
 	// NoDefaultServerHeader, when set to true, causes the default Server header
 	// to be excluded from the Response.
 	//
@@ -275,6 +316,13 @@ type Server struct {
 	// the only time a Server header will be sent is if a non-zero length
 	// value is explicitly provided during a request.
 	NoDefaultServerHeader bool
+
+	// NoDefaultContentType, when set to true, causes the default Content-Type
+	// header to be excluded from the Response.
+	//
+	// The default Content-Type header value is the internal default value. When
+	// set to true, the Content-Type will not be present.
+	NoDefaultContentType bool
 
 	// ConnState specifies an optional callback function that is
 	// called when a client connection changes state. See the
@@ -286,7 +334,8 @@ type Server struct {
 	// By default standard logger from log package is used.
 	Logger Logger
 
-	tlsConfig *tls.Config
+	tlsConfig  *tls.Config
+	nextProtos map[string]ServeHandler
 
 	concurrency      uint32
 	concurrencyCh    chan struct{}
@@ -302,8 +351,10 @@ type Server struct {
 	// We need to know our listener so we can close it in Shutdown().
 	ln net.Listener
 
-	wg   sync.WaitGroup
+	mu   sync.Mutex
+	open int32
 	stop int32
+	done chan struct{}
 }
 
 // TimeoutHandler creates RequestHandler, which returns StatusRequestTimeout
@@ -516,6 +567,7 @@ func (ctx *RequestCtx) VisitUserValues(visitor func([]byte, interface{})) {
 }
 
 type connTLSer interface {
+	Handshake() error
 	ConnectionState() tls.ConnectionState
 }
 
@@ -548,6 +600,15 @@ func (ctx *RequestCtx) TLSConnectionState() *tls.ConnectionState {
 	}
 	state := tlsConn.ConnectionState()
 	return &state
+}
+
+// Conn returns a reference to the underlying net.Conn.
+//
+// WARNING: Only use this method if you know what you are doing!
+//
+// Reading from or writing to the returned connection will end badly!
+func (ctx *RequestCtx) Conn() net.Conn {
+	return ctx.c
 }
 
 type firstByteReader struct {
@@ -771,15 +832,27 @@ func SaveMultipartFile(fh *multipart.FileHeader, path string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	if ff, ok := f.(*os.File); ok {
+		// Windows can't rename files that are opened.
+		if err := f.Close(); err != nil {
+			return err
+		}
+
 		// If renaming fails we try the normal copying method.
 		// Renaming could fail if the files are on different devices.
 		if os.Rename(ff.Name(), path) == nil {
 			return nil
 		}
+
+		// Reopen f for the code below.
+		f, err = fh.Open()
+		if err != nil {
+			return err
+		}
 	}
+
+	defer f.Close()
 
 	ff, err := os.Create(path)
 	if err != nil {
@@ -955,11 +1028,18 @@ func (ctx *RequestCtx) SuccessString(contentType, body string) {
 //    * StatusFound (302)
 //    * StatusSeeOther (303)
 //    * StatusTemporaryRedirect (307)
+//    * StatusPermanentRedirect (308)
 //
 // All other statusCode values are replaced by StatusFound (302).
 //
 // The redirect uri may be either absolute or relative to the current
-// request uri.
+// request uri. Fasthttp will always send an absolute uri back to the client.
+// To send a relative uri you can use the following code:
+//
+//   strLocation = []byte("Location") // Put this with your top level var () declarations.
+//   ctx.Response.Header.SetCanonical(strLocation, "/relative?uri")
+//   ctx.Response.SetStatusCode(fasthttp.StatusMovedPermanently)
+//
 func (ctx *RequestCtx) Redirect(uri string, statusCode int) {
 	u := AcquireURI()
 	ctx.URI().CopyTo(u)
@@ -977,11 +1057,18 @@ func (ctx *RequestCtx) Redirect(uri string, statusCode int) {
 //    * StatusFound (302)
 //    * StatusSeeOther (303)
 //    * StatusTemporaryRedirect (307)
+//    * StatusPermanentRedirect (308)
 //
 // All other statusCode values are replaced by StatusFound (302).
 //
 // The redirect uri may be either absolute or relative to the current
-// request uri.
+// request uri. Fasthttp will always send an absolute uri back to the client.
+// To send a relative uri you can use the following code:
+//
+//   strLocation = []byte("Location") // Put this with your top level var () declarations.
+//   ctx.Response.Header.SetCanonical(strLocation, "/relative?uri")
+//   ctx.Response.SetStatusCode(fasthttp.StatusMovedPermanently)
+//
 func (ctx *RequestCtx) RedirectBytes(uri []byte, statusCode int) {
 	s := b2s(uri)
 	ctx.Redirect(s, statusCode)
@@ -995,7 +1082,8 @@ func (ctx *RequestCtx) redirect(uri []byte, statusCode int) {
 
 func getRedirectStatusCode(statusCode int) int {
 	if statusCode == StatusMovedPermanently || statusCode == StatusFound ||
-		statusCode == StatusSeeOther || statusCode == StatusTemporaryRedirect {
+		statusCode == StatusSeeOther || statusCode == StatusTemporaryRedirect ||
+		statusCode == StatusPermanentRedirect {
 		return statusCode
 	}
 	return StatusFound
@@ -1192,14 +1280,68 @@ func (ctx *RequestCtx) TimeoutErrorWithResponse(resp *Response) {
 	ctx.timeoutResponse = respCopy
 }
 
+// NextProto adds nph to be processed when key is negotiated when TLS
+// connection is established.
+//
+// This function can only be called before the server is started.
+func (s *Server) NextProto(key string, nph ServeHandler) {
+	if s.nextProtos == nil {
+		s.nextProtos = make(map[string]ServeHandler)
+	}
+	s.configTLS()
+	s.tlsConfig.NextProtos = append(s.tlsConfig.NextProtos, key)
+	s.nextProtos[key] = nph
+}
+
+func (s *Server) getNextProto(c net.Conn) (proto string, err error) {
+	if tlsConn, ok := c.(connTLSer); ok {
+		err = tlsConn.Handshake()
+		if err == nil {
+			proto = tlsConn.ConnectionState().NegotiatedProtocol
+		}
+	}
+	return
+}
+
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe, ListenAndServeTLS and
+// ListenAndServeTLSEmbed so dead TCP connections (e.g. closing laptop mid-download)
+// eventually go away.
+type tcpKeepaliveListener struct {
+	*net.TCPListener
+	keepalivePeriod time.Duration
+}
+
+func (ln tcpKeepaliveListener) Accept() (net.Conn, error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return nil, err
+	}
+	tc.SetKeepAlive(true)
+	if ln.keepalivePeriod > 0 {
+		tc.SetKeepAlivePeriod(ln.keepalivePeriod)
+	}
+	return tc, nil
+}
+
 // ListenAndServe serves HTTP requests from the given TCP4 addr.
 //
 // Pass custom listener to Serve if you need listening on non-TCP4 media
 // such as IPv6.
+//
+// Accepted connections are configured to enable TCP keep-alives.
 func (s *Server) ListenAndServe(addr string) error {
 	ln, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return err
+	}
+	if s.TCPKeepalive {
+		if tcpln, ok := ln.(*net.TCPListener); ok {
+			return s.Serve(tcpKeepaliveListener{
+				TCPListener:     tcpln,
+				keepalivePeriod: s.TCPKeepalivePeriod,
+			})
+		}
 	}
 	return s.Serve(ln)
 }
@@ -1232,10 +1374,20 @@ func (s *Server) ListenAndServeUNIX(addr string, mode os.FileMode) error {
 //
 // If the certFile or keyFile has not been provided to the server structure,
 // the function will use the previously added TLS configuration.
+//
+// Accepted connections are configured to enable TCP keep-alives.
 func (s *Server) ListenAndServeTLS(addr, certFile, keyFile string) error {
 	ln, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return err
+	}
+	if s.TCPKeepalive {
+		if tcpln, ok := ln.(*net.TCPListener); ok {
+			return s.ServeTLS(tcpKeepaliveListener{
+				TCPListener:     tcpln,
+				keepalivePeriod: s.TCPKeepalivePeriod,
+			}, certFile, keyFile)
+		}
 	}
 	return s.ServeTLS(ln, certFile, keyFile)
 }
@@ -1249,10 +1401,20 @@ func (s *Server) ListenAndServeTLS(addr, certFile, keyFile string) error {
 //
 // If the certFile or keyFile has not been provided the server structure,
 // the function will use previously added TLS configuration.
+//
+// Accepted connections are configured to enable TCP keep-alives.
 func (s *Server) ListenAndServeTLSEmbed(addr string, certData, keyData []byte) error {
 	ln, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return err
+	}
+	if s.TCPKeepalive {
+		if tcpln, ok := ln.(*net.TCPListener); ok {
+			return s.ServeTLSEmbed(tcpKeepaliveListener{
+				TCPListener:     tcpln,
+				keepalivePeriod: s.TCPKeepalivePeriod,
+			}, certData, keyData)
+		}
 	}
 	return s.ServeTLSEmbed(ln, certData, keyData)
 }
@@ -1314,13 +1476,7 @@ func (s *Server) AppendCert(certFile, keyFile string) error {
 		return fmt.Errorf("cannot load TLS key pair from certFile=%q and keyFile=%q: %s", certFile, keyFile, err)
 	}
 
-	if s.tlsConfig == nil {
-		s.tlsConfig = &tls.Config{
-			Certificates:             []tls.Certificate{cert},
-			PreferServerCipherSuites: true,
-		}
-		return nil
-	}
+	s.configTLS()
 
 	s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, cert)
 	return nil
@@ -1338,16 +1494,18 @@ func (s *Server) AppendCertEmbed(certData, keyData []byte) error {
 			len(certData), len(keyData), err)
 	}
 
-	if s.tlsConfig == nil {
-		s.tlsConfig = &tls.Config{
-			Certificates:             []tls.Certificate{cert},
-			PreferServerCipherSuites: true,
-		}
-		return nil
-	}
+	s.configTLS()
 
 	s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, cert)
 	return nil
+}
+
+func (s *Server) configTLS() {
+	if s.tlsConfig == nil {
+		s.tlsConfig = &tls.Config{
+			PreferServerCipherSuites: true,
+		}
+	}
 }
 
 // DefaultConcurrency is the maximum number of concurrent connections
@@ -1363,13 +1521,17 @@ func (s *Server) Serve(ln net.Listener) error {
 	var c net.Conn
 	var err error
 
-	s.ln = ln
-	defer func() {
-		// Don't keep a reference to the listener if we don't need to.
-		s.ln = nil
-	}()
+	s.mu.Lock()
+	{
+		if s.ln != nil {
+			s.mu.Unlock()
+			return ErrAlreadyServing
+		}
 
-	atomic.StoreInt32(&s.stop, 0)
+		s.ln = ln
+		s.done = make(chan struct{})
+	}
+	s.mu.Unlock()
 
 	maxWorkersCount := s.getConcurrency()
 	s.concurrencyCh = make(chan struct{}, maxWorkersCount)
@@ -1382,6 +1544,13 @@ func (s *Server) Serve(ln net.Listener) error {
 	}
 	wp.Start()
 
+	// Count our waiting to accept a connection as an open connection.
+	// This way we can't get into any weird state where just after accepting
+	// a connection Shutdown is called which reads open as 0 because it isn't
+	// incremented yet.
+	atomic.AddInt32(&s.open, 1)
+	defer atomic.AddInt32(&s.open, -1)
+
 	for {
 		if c, err = acceptConn(s, ln, &lastPerIPErrorTime); err != nil {
 			wp.Stop()
@@ -1391,9 +1560,9 @@ func (s *Server) Serve(ln net.Listener) error {
 			return err
 		}
 		s.setState(c, StateNew)
-		s.wg.Add(1)
+		atomic.AddInt32(&s.open, 1)
 		if !wp.Serve(c) {
-			s.wg.Done()
+			atomic.AddInt32(&s.open, -1)
 			s.writeFastError(c, StatusServiceUnavailable,
 				"The connection cannot be served because Server.Concurrency limit exceeded")
 			c.Close()
@@ -1410,7 +1579,11 @@ func (s *Server) Serve(ln net.Listener) error {
 			//
 			// There is a hope other servers didn't reach their
 			// concurrency limits yet :)
-			time.Sleep(100 * time.Millisecond)
+			//
+			// See also: https://github.com/valyala/fasthttp/pull/485#discussion_r239994990
+			if s.SleepWhenConcurrencyLimitsExceeded > 0 {
+				time.Sleep(s.SleepWhenConcurrencyLimitsExceeded)
+			}
 		}
 		c = nil
 	}
@@ -1424,16 +1597,38 @@ func (s *Server) Serve(ln net.Listener) error {
 //
 // Shutdown does not close keepalive connections so its recommended to set ReadTimeout to something else than 0.
 func (s *Server) Shutdown() error {
-	if s.ln != nil {
-		if err := s.ln.Close(); err != nil {
-			return err
-		}
-	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	atomic.StoreInt32(&s.stop, 1)
+	defer atomic.StoreInt32(&s.stop, 0)
+
+	if s.ln == nil {
+		return nil
+	}
+
+	if err := s.ln.Close(); err != nil {
+		return err
+	}
+
+	if s.done != nil {
+		close(s.done)
+	}
+
 	// Closing the listener will make Serve() call Stop on the worker pool.
 	// Setting .stop to 1 will make serveConn() break out of its loop.
 	// Now we just have to wait until all workers are done.
-	s.wg.Wait()
+	for {
+		if open := atomic.LoadInt32(&s.open); open == 0 {
+			break
+		}
+		// This is not an optimal solution but using a sync.WaitGroup
+		// here causes data races as it's hard to prevent Add() to be called
+		// while Wait() is waiting.
+		time.Sleep(time.Millisecond * 100)
+	}
+
+	s.ln = nil
 	return nil
 }
 
@@ -1538,7 +1733,7 @@ func (s *Server) ServeConn(c net.Conn) error {
 		return ErrConcurrencyLimit
 	}
 
-	s.wg.Add(1)
+	atomic.AddInt32(&s.open, 1)
 
 	err := s.serveConn(c)
 
@@ -1558,6 +1753,21 @@ func (s *Server) ServeConn(c net.Conn) error {
 }
 
 var errHijacked = errors.New("connection has been hijacked")
+
+// GetCurrentConcurrency returns a number of currently served
+// connections.
+//
+// This function is intended be used by monitoring systems
+func (s *Server) GetCurrentConcurrency() uint32 {
+	return atomic.LoadUint32(&s.concurrency)
+}
+
+// GetOpenConnectionsCount returns a number of opened connections.
+//
+// This function is intended be used by monitoring systems
+func (s *Server) GetOpenConnectionsCount() int32 {
+	return atomic.LoadInt32(&s.open) - 1
+}
 
 func (s *Server) getConcurrency() int {
 	n := s.Concurrency
@@ -1580,7 +1790,16 @@ func nextConnID() uint64 {
 const DefaultMaxRequestBodySize = 4 * 1024 * 1024
 
 func (s *Server) serveConn(c net.Conn) error {
-	defer s.wg.Done()
+	defer atomic.AddInt32(&s.open, -1)
+
+	if proto, err := s.getNextProto(c); err != nil {
+		return err
+	} else {
+		handler, ok := s.nextProtos[proto]
+		if ok {
+			return handler(c)
+		}
+	}
 
 	var serverName []byte
 	if !s.NoDefaultServerHeader {
@@ -1613,11 +1832,6 @@ func (s *Server) serveConn(c net.Conn) error {
 		isHTTP11        bool
 	)
 	for {
-		if atomic.LoadInt32(&s.stop) == 1 {
-			err = nil
-			break
-		}
-
 		connRequestNum++
 		ctx.time = currentTime
 
@@ -1637,6 +1851,7 @@ func (s *Server) serveConn(c net.Conn) error {
 			br, err = acquireByteReader(&ctx)
 		}
 		ctx.Request.isTLS = isTLS
+		ctx.Response.Header.noDefaultContentType = s.NoDefaultContentType
 
 		if err == nil {
 			if s.DisableHeaderNamesNormalizing {
@@ -1645,11 +1860,11 @@ func (s *Server) serveConn(c net.Conn) error {
 			}
 			// reading Headers and Body
 			err = ctx.Request.readLimitBody(br, maxRequestBodySize, s.GetOnly)
-			if br.Buffered() > 0 {
+			if err == nil {
 				// If we read any bytes off the wire, we're active.
 				s.setState(c, StateActive)
 			}
-			if br.Buffered() == 0 || err != nil {
+			if (s.ReduceMemoryUsage && br.Buffered() == 0) || err != nil {
 				releaseReader(s, br)
 				br = nil
 			}
@@ -1661,8 +1876,15 @@ func (s *Server) serveConn(c net.Conn) error {
 		if err != nil {
 			if err == io.EOF {
 				err = nil
+			} else if connRequestNum > 1 && err == errNothingRead {
+				// This is not the first request and we haven't read a single byte
+				// of a new request yet. This means it's just a keep-alive connection
+				// closing down either because the remote closed it or because
+				// or a read timeout on our side. Either way just close the connection
+				// and don't return any error response.
+				err = nil
 			} else {
-				bw = writeErrorResponse(bw, ctx, serverName, err)
+				bw = s.writeErrorResponse(bw, ctx, serverName, err)
 			}
 			break
 		}
@@ -1676,10 +1898,12 @@ func (s *Server) serveConn(c net.Conn) error {
 			}
 			bw.Write(strResponseContinue)
 			err = bw.Flush()
-			releaseWriter(s, bw)
-			bw = nil
 			if err != nil {
 				break
+			}
+			if s.ReduceMemoryUsage {
+				releaseWriter(s, bw)
+				bw = nil
 			}
 
 			// Read request body.
@@ -1687,17 +1911,17 @@ func (s *Server) serveConn(c net.Conn) error {
 				br = acquireReader(ctx)
 			}
 			err = ctx.Request.ContinueReadBody(br, maxRequestBodySize)
-			if br.Buffered() == 0 || err != nil {
+			if (s.ReduceMemoryUsage && br.Buffered() == 0) || err != nil {
 				releaseReader(s, br)
 				br = nil
 			}
 			if err != nil {
-				bw = writeErrorResponse(bw, ctx, serverName, err)
+				bw = s.writeErrorResponse(bw, ctx, serverName, err)
 				break
 			}
 		}
 
-		connectionClose = s.DisableKeepalive || ctx.Request.Header.connectionCloseFast()
+		connectionClose = s.DisableKeepalive || ctx.Request.Header.ConnectionClose()
 		isHTTP11 = ctx.Request.Header.IsHTTP11()
 
 		if serverName != nil {
@@ -1736,9 +1960,7 @@ func (s *Server) serveConn(c net.Conn) error {
 			lastWriteDeadlineTime = s.updateWriteDeadline(c, ctx, lastWriteDeadlineTime)
 		}
 
-		// Verify Request.Header.connectionCloseFast() again,
-		// since request handler might trigger full headers' parsing.
-		connectionClose = connectionClose || ctx.Request.Header.connectionCloseFast() || ctx.Response.ConnectionClose()
+		connectionClose = connectionClose || ctx.Response.ConnectionClose()
 		if connectionClose {
 			ctx.Response.Header.SetCanonical(strConnection, strClose)
 		} else if !isHTTP11 {
@@ -1759,21 +1981,27 @@ func (s *Server) serveConn(c net.Conn) error {
 			break
 		}
 
-		if br == nil || connectionClose {
+		// Only flush the writer if we don't have another request in the pipeline.
+		// This is a big of an ugly optimization for https://www.techempower.com/benchmarks/
+		// This benchmark will send 16 pipelined requests. It is faster to pack as many responses
+		// in a TCP packet and send it back at once than waiting for a flush every request.
+		// In real world circumstances this behaviour could be argued as being wrong.
+		if br == nil || br.Buffered() == 0 || connectionClose {
 			err = bw.Flush()
-			releaseWriter(s, bw)
-			bw = nil
 			if err != nil {
 				break
 			}
-			if connectionClose {
-				break
-			}
+		}
+		if connectionClose {
+			break
+		}
+		if s.ReduceMemoryUsage {
+			releaseWriter(s, bw)
+			bw = nil
 		}
 
 		if hijackHandler != nil {
-			var hjr io.Reader
-			hjr = c
+			var hjr io.Reader = c
 			if br != nil {
 				hjr = br
 				br = nil
@@ -1783,11 +2011,11 @@ func (s *Server) serveConn(c net.Conn) error {
 			}
 			if bw != nil {
 				err = bw.Flush()
-				releaseWriter(s, bw)
-				bw = nil
 				if err != nil {
 					break
 				}
+				releaseWriter(s, bw)
+				bw = nil
 			}
 			c.SetReadDeadline(zeroTime)
 			c.SetWriteDeadline(zeroTime)
@@ -1799,6 +2027,11 @@ func (s *Server) serveConn(c net.Conn) error {
 
 		currentTime = time.Now()
 		s.setState(c, StateIdle)
+
+		if atomic.LoadInt32(&s.stop) == 1 {
+			err = nil
+			break
+		}
 	}
 
 	if br != nil {
@@ -2070,6 +2303,51 @@ func (ctx *RequestCtx) Init(req *Request, remoteAddr net.Addr, logger Logger) {
 	req.CopyTo(&ctx.Request)
 }
 
+// Deadline returns the time when work done on behalf of this context
+// should be canceled. Deadline returns ok==false when no deadline is
+// set. Successive calls to Deadline return the same results.
+//
+// This method always returns 0, false and is only present to make
+// RequestCtx implement the context interface.
+func (ctx *RequestCtx) Deadline() (deadline time.Time, ok bool) {
+	return
+}
+
+// Done returns a channel that's closed when work done on behalf of this
+// context should be canceled. Done may return nil if this context can
+// never be canceled. Successive calls to Done return the same value.
+func (ctx *RequestCtx) Done() <-chan struct{} {
+	return ctx.s.done
+}
+
+// Err returns a non-nil error value after Done is closed,
+// successive calls to Err return the same error.
+// If Done is not yet closed, Err returns nil.
+// If Done is closed, Err returns a non-nil error explaining why:
+// Canceled if the context was canceled (via server Shutdown)
+// or DeadlineExceeded if the context's deadline passed.
+func (ctx *RequestCtx) Err() error {
+	select {
+	case <-ctx.s.done:
+		return context.Canceled
+	default:
+		return nil
+	}
+}
+
+// Value returns the value associated with this context for key, or nil
+// if no value is associated with key. Successive calls to Value with
+// the same key returns the same result.
+//
+// This method is present to make RequestCtx implement the context interface.
+// This method is the same as calling ctx.UserValue(key)
+func (ctx *RequestCtx) Value(key interface{}) interface{} {
+	if keyString, ok := key.(string); ok {
+		return ctx.UserValue(keyString)
+	}
+	return nil
+}
+
 var fakeServer = &Server{
 	// Initialize concurrencyCh for TimeoutHandler
 	concurrencyCh: make(chan struct{}, DefaultConcurrency),
@@ -2143,12 +2421,22 @@ func (s *Server) writeFastError(w io.Writer, statusCode int, msg string) {
 		serverDate.Load(), len(msg), msg)
 }
 
-func writeErrorResponse(bw *bufio.Writer, ctx *RequestCtx, serverName []byte, err error) *bufio.Writer {
+func defaultErrorHandler(ctx *RequestCtx, err error) {
 	if _, ok := err.(*ErrSmallBuffer); ok {
 		ctx.Error("Too big request header", StatusRequestHeaderFieldsTooLarge)
 	} else {
 		ctx.Error("Error when parsing request", StatusBadRequest)
 	}
+}
+
+func (s *Server) writeErrorResponse(bw *bufio.Writer, ctx *RequestCtx, serverName []byte, err error) *bufio.Writer {
+	errorHandler := defaultErrorHandler
+	if s.ErrorHandler != nil {
+		errorHandler = s.ErrorHandler
+	}
+
+	errorHandler(ctx, err)
+
 	if serverName != nil {
 		ctx.Response.Header.SetServerBytes(serverName)
 	}
