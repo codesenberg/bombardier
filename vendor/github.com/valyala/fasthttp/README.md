@@ -493,6 +493,7 @@ uintBuf := fasthttp.AppendUint(nil, 1234)
     websocket implementation for fasthttp.
   * [fasthttpsession](https://github.com/phachon/fasthttpsession) - a fast and powerful session package for fasthttp servers.
   * [atreugo](https://github.com/savsgio/atreugo) - Micro-framework to make simple the use of routing and middlewares.
+  * [kratgo](https://github.com/savsgio/kratgo) - Simple, lightweight and ultra-fast HTTP Cache to speed up your websites.
 
 
 # FAQ
@@ -550,7 +551,7 @@ uintBuf := fasthttp.AppendUint(nil, 1234)
   
   **NOTE**: Go 1.9.7 is the oldest tested version. We recommend you to update as soon as you can. As of 1.11.3 we will drop 1.9.x support.
 
-* *Please provide real benchmark data and sever information*
+* *Please provide real benchmark data and server information*
 
   See [this issue](https://github.com/valyala/fasthttp/issues/4).
 
