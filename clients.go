@@ -23,9 +23,10 @@ type bodyStreamProducer func() (io.ReadCloser, error)
 type clientOpts struct {
 	HTTP2 bool
 
-	maxConns  uint64
-	timeout   time.Duration
-	tlsConfig *tls.Config
+	maxConns          uint64
+	timeout           time.Duration
+	tlsConfig         *tls.Config
+	disableKeepAlives bool
 
 	headers     *headersList
 	url, method string
@@ -116,6 +117,7 @@ type httpClient struct {
 func newHTTPClient(opts *clientOpts) client {
 	c := new(httpClient)
 	tr := &http.Transport{
+		DisableKeepAlives:   opts.disableKeepAlives,
 		TLSClientConfig:     opts.tlsConfig,
 		MaxIdleConnsPerHost: int(opts.maxConns),
 	}

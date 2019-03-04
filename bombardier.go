@@ -126,10 +126,11 @@ func newBombardier(c config) (*bombardier, error) {
 	}
 
 	cc := &clientOpts{
-		HTTP2:     false,
-		maxConns:  c.numConns,
-		timeout:   c.timeout,
-		tlsConfig: tlsConfig,
+		HTTP2:             false,
+		maxConns:          c.numConns,
+		timeout:           c.timeout,
+		tlsConfig:         tlsConfig,
+		disableKeepAlives: c.disableKeepAlives,
 
 		headers:      c.headers,
 		url:          c.url,

@@ -24,6 +24,7 @@ type config struct {
 	printLatencies, insecure bool
 	rate                     *uint64
 	clientType               clientTyp
+	disableKeepAlives         bool
 
 	printIntro, printProgress, printResult bool
 
