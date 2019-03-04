@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -16,6 +17,16 @@ import (
 
 // AppendHTMLEscape appends html-escaped s to dst and returns the extended dst.
 func AppendHTMLEscape(dst []byte, s string) []byte {
+	if strings.IndexByte(s, '<') < 0 &&
+		strings.IndexByte(s, '>') < 0 &&
+		strings.IndexByte(s, '"') < 0 &&
+		strings.IndexByte(s, '\'') < 0 {
+
+		// fast path - nothing to escape
+		return append(dst, s...)
+	}
+
+	// slow path
 	var prev int
 	var sub string
 	for i, n := 0, len(s); i < n; i++ {
@@ -153,7 +164,7 @@ func ParseUint(buf []byte) (int, error) {
 var (
 	errEmptyInt               = errors.New("empty integer")
 	errUnexpectedFirstChar    = errors.New("unexpected first char found. Expecting 0-9")
-	errUnexpectedTrailingChar = errors.New("unexpected traling char found. Expecting 0-9")
+	errUnexpectedTrailingChar = errors.New("unexpected trailing char found. Expecting 0-9")
 	errTooLongInt             = errors.New("too long int")
 )
 
@@ -172,7 +183,8 @@ func parseUintBuf(b []byte) (int, int, error) {
 			}
 			return v, i, nil
 		}
-		if i >= maxIntChars {
+		// Test for overflow.
+		if v*10 < v {
 			return -1, i, errTooLongInt
 		}
 		v = 10*v + int(k)
@@ -254,8 +266,8 @@ func readHexInt(r *bufio.Reader) (int, error) {
 			}
 			return -1, err
 		}
-		k = hexbyte2int(c)
-		if k < 0 {
+		k = int(hex2intTable[c])
+		if k == 16 {
 			if i == 0 {
 				return -1, errEmptyHexNum
 			}
@@ -311,44 +323,51 @@ func hexCharUpper(c byte) byte {
 }
 
 var hex2intTable = func() []byte {
-	b := make([]byte, 255)
-	for i := byte(0); i < 255; i++ {
-		c := byte(0)
+	b := make([]byte, 256)
+	for i := 0; i < 256; i++ {
+		c := byte(16)
 		if i >= '0' && i <= '9' {
-			c = 1 + i - '0'
+			c = byte(i) - '0'
 		} else if i >= 'a' && i <= 'f' {
-			c = 1 + i - 'a' + 10
+			c = byte(i) - 'a' + 10
 		} else if i >= 'A' && i <= 'F' {
-			c = 1 + i - 'A' + 10
+			c = byte(i) - 'A' + 10
 		}
 		b[i] = c
 	}
 	return b
 }()
 
-func hexbyte2int(c byte) int {
-	return int(hex2intTable[c]) - 1
-}
-
 const toLower = 'a' - 'A'
 
-func uppercaseByte(p *byte) {
-	c := *p
-	if c >= 'a' && c <= 'z' {
-		*p = c - toLower
+var toLowerTable = func() [256]byte {
+	var a [256]byte
+	for i := 0; i < 256; i++ {
+		c := byte(i)
+		if c >= 'A' && c <= 'Z' {
+			c += toLower
+		}
+		a[i] = c
 	}
-}
+	return a
+}()
 
-func lowercaseByte(p *byte) {
-	c := *p
-	if c >= 'A' && c <= 'Z' {
-		*p = c + toLower
+var toUpperTable = func() [256]byte {
+	var a [256]byte
+	for i := 0; i < 256; i++ {
+		c := byte(i)
+		if c >= 'a' && c <= 'z' {
+			c -= toLower
+		}
+		a[i] = c
 	}
-}
+	return a
+}()
 
 func lowercaseBytes(b []byte) {
-	for i, n := 0, len(b); i < n; i++ {
-		lowercaseByte(&b[i])
+	for i := 0; i < len(b); i++ {
+		p := &b[i]
+		*p = toLowerTable[*p]
 	}
 }
 
@@ -375,6 +394,13 @@ func s2b(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&bh))
 }
 
+// AppendUnquotedArg appends url-decoded src to dst and returns appended dst.
+//
+// dst may point to src. In this case src will be overwritten.
+func AppendUnquotedArg(dst, src []byte) []byte {
+	return decodeArgAppend(dst, src)
+}
+
 // AppendQuotedArg appends url-encoded src to dst and returns appended dst.
 func AppendQuotedArg(dst, src []byte) []byte {
 	for _, c := range src {
@@ -391,32 +417,21 @@ func AppendQuotedArg(dst, src []byte) []byte {
 
 func appendQuotedPath(dst, src []byte) []byte {
 	for _, c := range src {
+		// From the spec: http://tools.ietf.org/html/rfc3986#section-3.3
+		// an path can contain zero or more of pchar that is defined as follows:
+		// pchar       = unreserved / pct-encoded / sub-delims / ":" / "@"
+		// pct-encoded = "%" HEXDIG HEXDIG
+		// unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+		// sub-delims  = "!" / "$" / "&" / "'" / "(" / ")"
+		//             / "*" / "+" / "," / ";" / "="
 		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' ||
-			c == '/' || c == '.' || c == ',' || c == '=' || c == ':' || c == '&' || c == '~' || c == '-' || c == '_' {
+			c == '-' || c == '.' || c == '_' || c == '~' || c == '!' || c == '$' ||
+			c == '&' || c == '\'' || c == '(' || c == ')' || c == '*' || c == '+' ||
+			c == ',' || c == ';' || c == '=' || c == ':' || c == '@' || c == '/' {
 			dst = append(dst, c)
 		} else {
 			dst = append(dst, '%', hexCharUpper(c>>4), hexCharUpper(c&15))
 		}
 	}
 	return dst
-}
-
-// EqualBytesStr returns true if string(b) == s.
-//
-// This function has no performance benefits comparing to string(b) == s.
-// It is left here for backwards compatibility only.
-//
-// This function is deperecated and may be deleted soon.
-func EqualBytesStr(b []byte, s string) bool {
-	return string(b) == s
-}
-
-// AppendBytesStr appends src to dst and returns the extended dst.
-//
-// This function has no performance benefits comparing to append(dst, src...).
-// It is left here for backwards compatibility only.
-//
-// This function is deprecated and may be deleted soon.
-func AppendBytesStr(dst []byte, src string) []byte {
-	return append(dst, src...)
 }

@@ -157,7 +157,7 @@ func TestBombardierHTTPCodeRecording(t *testing.T) {
 }
 
 func testBombardierHTTPCodeRecording(clientType clientTyp, t *testing.T) {
-	cs := []int{102, 200, 302, 404, 505, 606, 707}
+	cs := []int{200, 302, 404, 505, 606, 707}
 	codes := ring.New(len(cs))
 	for _, v := range cs {
 		codes.Value = v
@@ -202,7 +202,6 @@ func testBombardierHTTPCodeRecording(clientType clientTyp, t *testing.T) {
 		expected uint64
 	}{
 		{"errored", b.others, eachCodeCount * 2},
-		{"1xx", b.req1xx, eachCodeCount},
 		{"2xx", b.req2xx, eachCodeCount},
 		{"3xx", b.req3xx, eachCodeCount},
 		{"4xx", b.req4xx, eachCodeCount},
@@ -699,6 +698,44 @@ func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
 	if e != nil {
 		t.Error(e)
 		return
+	}
+	b.disableOutput()
+	b.bombard()
+}
+
+func TestBombardierShouldSendCustomHostHeader(t *testing.T) {
+	testAllClients(t, testBombardierShouldSendCustomHostHeader)
+}
+
+func testBombardierShouldSendCustomHostHeader(
+	clientType clientTyp, t *testing.T,
+) {
+	host := "custom-host"
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if r.Host != host {
+				t.Errorf("Host must be %q, but it's %q", host, r.Host)
+			}
+		}),
+	)
+	defer s.Close()
+	numReqs := uint64(100)
+	headers := headersList([]header{
+		{"Host", host},
+	})
+	b, e := newBombardier(config{
+		numConns:   defaultNumberOfConns,
+		numReqs:    &numReqs,
+		url:        s.URL,
+		headers:    &headers,
+		timeout:    defaultTimeout,
+		method:     "GET",
+		body:       "",
+		clientType: clientType,
+		format:     knownFormat("plain-text"),
+	})
+	if e != nil {
+		t.Error(e)
 	}
 	b.disableOutput()
 	b.bombard()

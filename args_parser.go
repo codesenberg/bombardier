@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -205,11 +208,15 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 			"unknown format or invalid format spec %q", k.formatSpec,
 		)
 	}
+	url, err := tryParseURL(k.url)
+	if err != nil {
+		return emptyConf, err
+	}
 	return config{
 		numConns:          k.numConns,
 		numReqs:           k.numReqs.val,
 		duration:          k.duration.val,
-		url:               k.url,
+		url:               url,
 		headers:           k.headers,
 		timeout:           k.timeout,
 		method:            k.method,
@@ -258,4 +265,69 @@ func parsePrintSpec(spec string) (bool, bool, bool, error) {
 			)
 	}
 	return pi, pp, pr, nil
+}
+
+var re = regexp.MustCompile(`^(?P<proto>.+:\/\/)?.*$`)
+
+func tryParseURL(raw string) (string, error) {
+	rs := raw
+
+	// Try the parse.
+	m := re.FindStringSubmatch(rs)
+	if m == nil {
+		// Just in case.
+		return "", fmt.Errorf(
+			"%v does not appear to be a valid URL",
+			raw,
+		)
+	}
+
+	// If the URL doesn't start with a scheme, assume that the user
+	// meant 'http'.
+	proto := m[1]
+	if proto == "" {
+		rs = "http://" + rs
+	} else if proto != "http://" && proto != "https://" {
+		// We're not interested in other protocols.
+		return "", fmt.Errorf(
+			"%q is not an acceptable protocol (http, https): %v",
+			proto, raw,
+		)
+	}
+
+	u, err := url.Parse(rs)
+	if err != nil {
+		return "", fmt.Errorf(
+			"%v does not appear to be a valid URL: %v",
+			raw, err,
+		)
+	}
+
+	// If port is not present append a default one to the u.Host.
+	schemePort := map[string]string{
+		"http":  ":80",
+		"https": ":443",
+	}
+	if u.Port() == "" {
+		u.Host = u.Host + schemePort[u.Scheme]
+	}
+
+	host, port, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return "", fmt.Errorf(
+			"%v does not appear to be a valid URL",
+			raw,
+		)
+	}
+
+	// If user omitted the host, assume that he meant 'localhost'.
+	// net/http seem to be doing this already, but fasthttp needs
+	// host to be specified explicitly.
+	if host == "" {
+		host = "localhost"
+	}
+
+	u.Host = net.JoinHostPort(host, port)
+
+	return u.String(), nil
 }

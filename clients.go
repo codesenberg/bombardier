@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goware/urlx"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/net/http2"
 )
@@ -38,10 +37,10 @@ type clientOpts struct {
 }
 
 type fasthttpClient struct {
-	client *fasthttp.Client
+	client *fasthttp.HostClient
 
-	headers     *fasthttp.RequestHeader
-	url, method string
+	headers                  *fasthttp.RequestHeader
+	host, requestURI, method string
 
 	body    *string
 	bodProd bodyStreamProducer
@@ -49,8 +48,17 @@ type fasthttpClient struct {
 
 func newFastHTTPClient(opts *clientOpts) client {
 	c := new(fasthttpClient)
-	c.client = &fasthttp.Client{
-		MaxConnsPerHost:               int(opts.maxConns),
+	u, err := url.Parse(opts.url)
+	if err != nil {
+		// opts.url guaranteed to be valid at this point
+		panic(err)
+	}
+	c.host = u.Host
+	c.requestURI = u.RequestURI()
+	c.client = &fasthttp.HostClient{
+		Addr:                          u.Host,
+		IsTLS:                         u.Scheme == "https",
+		MaxConns:                      int(opts.maxConns),
 		ReadTimeout:                   opts.timeout,
 		WriteTimeout:                  opts.timeout,
 		DisableHeaderNamesNormalizing: true,
@@ -60,7 +68,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 		),
 	}
 	c.headers = headersToFastHTTPHeaders(opts.headers)
-	c.url, c.method, c.body = opts.url, opts.method, opts.body
+	c.method, c.body = opts.method, opts.body
 	c.bodProd = opts.bodProd
 	return client(c)
 }
@@ -74,8 +82,11 @@ func (c *fasthttpClient) do() (
 	if c.headers != nil {
 		c.headers.CopyTo(&req.Header)
 	}
+	if len(req.Header.Host()) == 0 {
+		req.Header.SetHost(c.host)
+	}
 	req.Header.SetMethod(c.method)
-	req.SetRequestURI(c.url)
+	req.SetRequestURI(c.requestURI)
 	if c.body != nil {
 		req.SetBodyString(*c.body)
 	} else {
@@ -142,7 +153,7 @@ func newHTTPClient(opts *clientOpts) client {
 	c.headers = headersToHTTPHeaders(opts.headers)
 	c.method, c.body, c.bodProd = opts.method, opts.body, opts.bodProd
 	var err error
-	c.url, err = urlx.Parse(opts.url)
+	c.url, err = url.Parse(opts.url)
 	if err != nil {
 		// opts.url guaranteed to be valid at this point
 		panic(err)
