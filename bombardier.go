@@ -40,7 +40,7 @@ type bombardier struct {
 	latencies *uhist.Histogram
 	requests  *fhist.Histogram
 
-	client   client
+	clients  []client
 	doneChan chan struct{}
 
 	// RPS metrics
@@ -126,21 +126,23 @@ func newBombardier(c config) (*bombardier, error) {
 		}
 	}
 
-	cc := &clientOpts{
-		HTTP2:     false,
-		maxConns:  c.numConns,
-		timeout:   c.timeout,
-		tlsConfig: tlsConfig,
+	for _, ep := range c.paths {
+		cc := &clientOpts{
+			HTTP2:     false,
+			maxConns:  c.numConns,
+			timeout:   c.timeout,
+			tlsConfig: tlsConfig,
 
-		headers:      c.headers,
-		url:          c.url,
-		method:       c.method,
-		body:         pbody,
-		bodProd:      bsp,
-		bytesRead:    &b.bytesRead,
-		bytesWritten: &b.bytesWritten,
+			headers:      c.headers,
+			url:          c.baseUrl + ep,
+			method:       c.method,
+			body:         pbody,
+			bodProd:      bsp,
+			bytesRead:    &b.bytesRead,
+			bytesWritten: &b.bytesWritten,
+		}
+		b.clients = append(b.clients, makeHTTPClient(c.clientType, cc))
 	}
-	b.client = makeHTTPClient(c.clientType, cc)
 
 	if !b.conf.printProgress {
 		b.bar.Output = ioutil.Discard
@@ -248,11 +250,13 @@ func (b *bombardier) writeStatistics(
 }
 
 func (b *bombardier) performSingleRequest() {
-	code, msTaken, err := b.client.do()
-	if err != nil {
-		b.errors.add(err)
+	for _, client := range b.clients {
+		code, msTaken, err := client.do()
+		if err != nil {
+			b.errors.add(err)
+		}
+		b.writeStatistics(code, msTaken)
 	}
-	b.writeStatistics(code, msTaken)
 }
 
 func (b *bombardier) worker() {
@@ -349,10 +353,10 @@ func (b *bombardier) printIntro() {
 	if b.conf.testType() == counted {
 		fmt.Fprintf(b.out,
 			"Bombarding %v with %v request(s) using %v connection(s)\n",
-			b.conf.url, *b.conf.numReqs, b.conf.numConns)
+			b.conf.baseUrl, *b.conf.numReqs, b.conf.numConns)
 	} else if b.conf.testType() == timed {
 		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connection(s)\n",
-			b.conf.url, *b.conf.duration, b.conf.numConns)
+			b.conf.baseUrl, *b.conf.duration, b.conf.numConns)
 	}
 }
 
@@ -362,7 +366,7 @@ func (b *bombardier) gatherInfo() internal.TestInfo {
 			NumberOfConnections: b.conf.numConns,
 
 			Method: b.conf.method,
-			URL:    b.conf.url,
+			URL:    b.conf.baseUrl,
 
 			Body:         b.conf.body,
 			BodyFilePath: b.conf.bodyFilePath,

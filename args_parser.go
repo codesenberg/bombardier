@@ -20,8 +20,6 @@ type argsParser interface {
 type kingpinParser struct {
 	app *kingpin.Application
 
-	url string
-
 	numReqs      *nullableUint64
 	duration     *nullableDuration
 	headers      *headersList
@@ -29,6 +27,8 @@ type kingpinParser struct {
 	timeout      time.Duration
 	latencies    bool
 	insecure     bool
+	baseUrl      string
+	paths        []string
 	method       string
 	body         string
 	bodyFilePath string
@@ -59,7 +59,8 @@ func newKingpinParser() argsParser {
 		certPath:     "",
 		keyPath:      "",
 		insecure:     false,
-		url:          "",
+		baseUrl:      "",
+		paths:        []string{""},
 		rate:         new(nullableUint64),
 		clientType:   fhttp,
 		printSpec:    new(nullableString),
@@ -174,8 +175,11 @@ func newKingpinParser() argsParser {
 		Short('o').
 		StringVar(&kparser.formatSpec)
 
-	app.Arg("url", "Target's URL").Required().
-		StringVar(&kparser.url)
+	app.Arg("url", "The base URL to hit").Required().
+		StringVar(&kparser.baseUrl)
+
+	app.Arg("endpoints", "One or more endpoints to hit").Required().
+		StringsVar(&kparser.paths)
 
 	kparser.app = app
 	return argsParser(kparser)
@@ -203,7 +207,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 			"unknown format or invalid format spec %q", k.formatSpec,
 		)
 	}
-	url, err := tryParseURL(k.url)
+	baseUrl, err := tryParseURL(k.baseUrl)
 	if err != nil {
 		return emptyConf, err
 	}
@@ -211,7 +215,8 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		numConns:       k.numConns,
 		numReqs:        k.numReqs.val,
 		duration:       k.duration.val,
-		url:            url,
+		baseUrl:        baseUrl,
+		paths:          k.paths,
 		headers:        k.headers,
 		timeout:        k.timeout,
 		method:         k.method,
