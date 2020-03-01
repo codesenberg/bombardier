@@ -261,7 +261,7 @@ func parsePrintSpec(spec string) (bool, bool, bool, error) {
 	return pi, pp, pr, nil
 }
 
-var re = regexp.MustCompile(`^(?P<proto>.+:\/\/)?.*$`)
+var re = regexp.MustCompile(`^(?P<proto>.+?:\/\/)?.*$`)
 
 func tryParseURL(raw string) (string, error) {
 	rs := raw
