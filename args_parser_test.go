@@ -840,3 +840,15 @@ func TestTryParseUrl(t *testing.T) {
 		}
 	}
 }
+
+func TestEmbeddedURLParsing(t *testing.T) {
+	p := newKingpinParser()
+	url := "http://127.0.0.1:8080/to?url=http://10.100.99.41:38667"
+	c, err := p.parse([]string{programName, url})
+	if err != nil {
+		t.Error(err)
+	}
+	if c.url != url {
+		t.Errorf("got %q, wanted %q", c.url, url)
+	}
+}
