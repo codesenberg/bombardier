@@ -11,6 +11,7 @@ type config struct {
 	numConns                       uint64
 	numReqs                        *uint64
 	duration                       *time.Duration
+	randID                         bool
 	url, method, certPath, keyPath string
 	body, bodyFilePath             string
 	stream                         bool

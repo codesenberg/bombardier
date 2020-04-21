@@ -37,6 +37,7 @@ type kingpinParser struct {
 	keyPath      string
 	rate         *nullableUint64
 	clientType   clientTyp
+	randID       bool
 
 	printSpec *nullableString
 	noPrint   bool
@@ -108,6 +109,10 @@ func newKingpinParser() argsParser {
 			" chain and host name").
 		Short('k').
 		BoolVar(&kparser.insecure)
+	app.Flag("randid",
+		"Controls if the string '<[_id]>' should be replaced with a"+
+			" random value in the body").
+		BoolVar(&kparser.randID)
 
 	app.Flag("header", "HTTP headers to use(can be repeated)").
 		PlaceHolder("\"K: V\"").
@@ -224,6 +229,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		insecure:       k.insecure,
 		rate:           k.rate.val,
 		clientType:     k.clientType,
+		randID:         k.randID,
 		printIntro:     pi,
 		printProgress:  pp,
 		printResult:    pr,

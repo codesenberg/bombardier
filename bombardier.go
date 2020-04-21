@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -13,11 +14,12 @@ import (
 	"time"
 
 	"github.com/codesenberg/bombardier/internal"
+	"github.com/valyala/fastrand"
 
 	"github.com/cheggaaa/pb"
 	fhist "github.com/codesenberg/concurrent/float64/histogram"
 	uhist "github.com/codesenberg/concurrent/uint64/histogram"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 type bombardier struct {
@@ -248,6 +250,12 @@ func (b *bombardier) writeStatistics(
 }
 
 func (b *bombardier) performSingleRequest() {
+	// prepare body if needed
+	if b.conf.randID {
+		b.conf.body = strings.ReplaceAll(b.conf.body, "<[_id]>",
+			strconv.FormatUint(uint64(fastrand.Uint32()), 10))
+	}
+
 	code, msTaken, err := b.client.do()
 	if err != nil {
 		b.errors.add(err)
