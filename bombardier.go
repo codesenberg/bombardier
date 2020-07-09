@@ -34,7 +34,7 @@ type bombardier struct {
 	conf        config
 	barrier     completionBarrier
 	ratelimiter limiter
-	workers     sync.WaitGroup
+	wg          sync.WaitGroup
 
 	timeTaken time.Duration
 	latencies *uhist.Histogram
@@ -153,7 +153,7 @@ func newBombardier(c config) (*bombardier, error) {
 		return nil, err
 	}
 
-	b.workers.Add(int(c.numConns))
+	b.wg.Add(int(c.numConns))
 	b.errors = newErrorMap()
 	b.doneChan = make(chan struct{}, 2)
 	return b, nil
@@ -224,9 +224,9 @@ func (b *bombardier) prepareTemplate() (*template.Template, error) {
 }
 
 func (b *bombardier) writeStatistics(
-	code int, msTaken uint64,
+	code int, usTaken uint64,
 ) {
-	b.latencies.Increment(msTaken)
+	b.latencies.Increment(usTaken)
 	b.rpl.Lock()
 	b.reqs++
 	b.rpl.Unlock()
@@ -249,11 +249,11 @@ func (b *bombardier) writeStatistics(
 }
 
 func (b *bombardier) performSingleRequest() {
-	code, msTaken, err := b.client.do()
+	code, usTaken, err := b.client.do()
 	if err != nil {
 		b.errors.add(err)
 	}
-	b.writeStatistics(code, msTaken)
+	b.writeStatistics(code, usTaken)
 }
 
 func (b *bombardier) worker() {
@@ -297,15 +297,14 @@ func (b *bombardier) rateMeter() {
 	requestsInterval += 10 * time.Millisecond
 	ticker := time.NewTicker(requestsInterval)
 	defer ticker.Stop()
-	tick := ticker.C
 	done := b.barrier.done()
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			b.recordRps()
 			continue
 		case <-done:
-			b.workers.Wait()
+			b.wg.Wait()
 			b.recordRps()
 			b.doneChan <- struct{}{}
 			return
@@ -334,13 +333,13 @@ func (b *bombardier) bombard() {
 	b.start = time.Now()
 	for i := uint64(0); i < b.conf.numConns; i++ {
 		go func() {
-			defer b.workers.Done()
+			defer b.wg.Done()
 			b.worker()
 		}()
 	}
 	go b.rateMeter()
 	go b.barUpdater()
-	b.workers.Wait()
+	b.wg.Wait()
 	b.timeTaken = time.Since(bombardmentBegin)
 	<-b.doneChan
 	<-b.doneChan
