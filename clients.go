@@ -14,7 +14,7 @@ import (
 )
 
 type client interface {
-	do() (code int, msTaken uint64, err error)
+	do() (code int, usTaken uint64, err error)
 }
 
 type bodyStreamProducer func() (io.ReadCloser, error)
@@ -74,7 +74,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 }
 
 func (c *fasthttpClient) do() (
-	code int, msTaken uint64, err error,
+	code int, usTaken uint64, err error,
 ) {
 	// prepare the request
 	req := fasthttp.AcquireRequest()
@@ -105,7 +105,7 @@ func (c *fasthttpClient) do() (
 	} else {
 		code = resp.StatusCode()
 	}
-	msTaken = uint64(time.Since(start).Nanoseconds() / 1000)
+	usTaken = uint64(time.Since(start).Nanoseconds() / 1000)
 
 	// release resources
 	fasthttp.ReleaseRequest(req)
@@ -163,7 +163,7 @@ func newHTTPClient(opts *clientOpts) client {
 }
 
 func (c *httpClient) do() (
-	code int, msTaken uint64, err error,
+	code int, usTaken uint64, err error,
 ) {
 	req := &http.Request{}
 
@@ -203,7 +203,7 @@ func (c *httpClient) do() (
 			err = cerr
 		}
 	}
-	msTaken = uint64(time.Since(start).Nanoseconds() / 1000)
+	usTaken = uint64(time.Since(start).Nanoseconds() / 1000)
 
 	return
 }
