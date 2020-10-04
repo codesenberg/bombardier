@@ -17,7 +17,7 @@ import (
 	"github.com/cheggaaa/pb"
 	fhist "github.com/codesenberg/concurrent/float64/histogram"
 	uhist "github.com/codesenberg/concurrent/uint64/histogram"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 type bombardier struct {
@@ -127,10 +127,11 @@ func newBombardier(c config) (*bombardier, error) {
 	}
 
 	cc := &clientOpts{
-		HTTP2:     false,
-		maxConns:  c.numConns,
-		timeout:   c.timeout,
-		tlsConfig: tlsConfig,
+		HTTP2:             false,
+		maxConns:          c.numConns,
+		timeout:           c.timeout,
+		tlsConfig:         tlsConfig,
+		disableKeepAlives: c.disableKeepAlives,
 
 		headers:      c.headers,
 		url:          c.url,
