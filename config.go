@@ -10,6 +10,7 @@ import (
 type config struct {
 	numConns                       uint64
 	numReqs                        *uint64
+	disableKeepAlives         bool
 	duration                       *time.Duration
 	url, method, certPath, keyPath string
 	body, bodyFilePath             string

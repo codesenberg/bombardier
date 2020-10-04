@@ -22,21 +22,22 @@ type kingpinParser struct {
 
 	url string
 
-	numReqs      *nullableUint64
-	duration     *nullableDuration
-	headers      *headersList
-	numConns     uint64
-	timeout      time.Duration
-	latencies    bool
-	insecure     bool
-	method       string
-	body         string
-	bodyFilePath string
-	stream       bool
-	certPath     string
-	keyPath      string
-	rate         *nullableUint64
-	clientType   clientTyp
+	numReqs           *nullableUint64
+	duration          *nullableDuration
+	headers           *headersList
+	numConns          uint64
+	timeout           time.Duration
+	latencies         bool
+	insecure          bool
+	disableKeepAlives bool
+	method            string
+	body              string
+	bodyFilePath      string
+	stream            bool
+	certPath          string
+	keyPath           string
+	rate              *nullableUint64
+	clientType        clientTyp
 
 	printSpec *nullableString
 	noPrint   bool
@@ -108,6 +109,10 @@ func newKingpinParser() argsParser {
 			" chain and host name").
 		Short('k').
 		BoolVar(&kparser.insecure)
+	app.Flag("disableKeepAlives",
+		"Disable HTTP keep-alive. For fasthttp use -H 'Connection: close'").
+		Short('a').
+		BoolVar(&kparser.disableKeepAlives)
 
 	app.Flag("header", "HTTP headers to use(can be repeated)").
 		PlaceHolder("\"K: V\"").
@@ -208,26 +213,27 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		return emptyConf, err
 	}
 	return config{
-		numConns:       k.numConns,
-		numReqs:        k.numReqs.val,
-		duration:       k.duration.val,
-		url:            url,
-		headers:        k.headers,
-		timeout:        k.timeout,
-		method:         k.method,
-		body:           k.body,
-		bodyFilePath:   k.bodyFilePath,
-		stream:         k.stream,
-		keyPath:        k.keyPath,
-		certPath:       k.certPath,
-		printLatencies: k.latencies,
-		insecure:       k.insecure,
-		rate:           k.rate.val,
-		clientType:     k.clientType,
-		printIntro:     pi,
-		printProgress:  pp,
-		printResult:    pr,
-		format:         format,
+		numConns:          k.numConns,
+		numReqs:           k.numReqs.val,
+		duration:          k.duration.val,
+		url:               url,
+		headers:           k.headers,
+		timeout:           k.timeout,
+		method:            k.method,
+		body:              k.body,
+		bodyFilePath:      k.bodyFilePath,
+		stream:            k.stream,
+		keyPath:           k.keyPath,
+		certPath:          k.certPath,
+		printLatencies:    k.latencies,
+		insecure:          k.insecure,
+		disableKeepAlives: k.disableKeepAlives,
+		rate:              k.rate.val,
+		clientType:        k.clientType,
+		printIntro:        pi,
+		printProgress:     pp,
+		printResult:       pr,
+		format:            format,
 	}, nil
 }
 
