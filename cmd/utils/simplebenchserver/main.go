@@ -17,6 +17,9 @@ var responseSize = kingpin.Flag("size", "size of response in bytes").
 	Short('s').
 	Uint()
 
+var verboseOutput = kingpin.Flag("verbose", "print the incoming requests").
+	Bool()
+
 func main() {
 	kingpin.Parse()
 	response := strings.Repeat("a", int(*responseSize))
@@ -27,6 +30,11 @@ func main() {
 		if werr != nil {
 			log.Println(werr)
 		}
+
+		if *verboseOutput {
+			log.Printf("Data from %s, size: %d\n", addr, *responseSize)
+		}
+
 	})
 	if err != nil {
 		log.Println(err)
