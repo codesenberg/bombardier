@@ -32,7 +32,7 @@ func main() {
 		}
 
 		if *verboseOutput {
-			log.Printf("Data from %s, size: %d\n", addr, *responseSize)
+			log.Printf("Data received on: %s, size: %d\n", addr, *responseSize)
 		}
 
 	})
