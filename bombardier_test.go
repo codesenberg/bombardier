@@ -392,6 +392,20 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 		},
 	}
 
+	tlsConfig := &tls.Config{
+		PreferServerCipherSuites: true,
+	}
+
+	cert, err := tls.LoadX509KeyPair("testserver.cert", "testserver.key")
+	if err != nil {
+		t.Errorf("cannot load test TLS cert/key pair: %s", err)
+		return
+	}
+
+	tlsConfig.Certificates = []tls.Certificate{cert}
+	tlsConfig.BuildNameToCertificate()
+	tlsConfig.ClientAuth = tls.RequireAnyClientCert
+
 	ln, err := net.Listen("tcp", "localhost:8080")
 	if err != nil {
 		t.Error(err)
@@ -399,7 +413,10 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 	}
 
 	go func() {
-		serr := server.ServeTLS(ln, "testserver.cert", "testserver.key")
+		serr := server.Serve(
+			tls.NewListener(ln, tlsConfig),
+		)
+
 		if serr != nil {
 			t.Error(err)
 		}

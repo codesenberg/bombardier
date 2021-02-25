@@ -86,6 +86,11 @@ func (c *fasthttpClient) do() (
 		req.Header.SetHost(c.host)
 	}
 	req.Header.SetMethod(c.method)
+	if c.client.IsTLS {
+		req.URI().SetScheme("https")
+	} else {
+		req.URI().SetScheme("http")
+	}
 	req.SetRequestURI(c.requestURI)
 	if c.body != nil {
 		req.SetBodyString(*c.body)
