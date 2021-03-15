@@ -4,6 +4,7 @@ import subprocess
 
 platforms = [
     ("darwin", "amd64"),
+    ("darwin", "arm64"),
     ("freebsd", "386"),
     ("freebsd", "amd64"),
     ("freebsd", "arm"),
