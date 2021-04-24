@@ -49,9 +49,11 @@ const (
 		{{- range $pc, $lat := .Percentiles }}
 			{{- printf "\n     %2.0f%% %10s" (Multiply $pc 100) (FormatTimeUsUint64 $lat) -}}
 		{{ end -}}
-		{{- "\n  Latency Distribution (2xx)" }}
-		{{- range $pc, $lat := .Percentiles2xx }}
-			{{- printf "\n     %2.0f%% %10s" (Multiply $pc 100) (FormatTimeUsUint64 $lat) -}}
+		{{- if .Percentiles2xx }}
+			{{- "\n  Latency Distribution (2xx)" }}
+			{{- range $pc, $lat := .Percentiles2xx }}
+				{{- printf "\n     %2.0f%% %10s" (Multiply $pc 100) (FormatTimeUsUint64 $lat) -}}
+			{{ end -}}
 		{{ end -}}
 	{{ end }}
 {{ else }}
