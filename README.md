@@ -10,7 +10,7 @@ Tested on go1.8 and higher.
 You can grab binaries in the [releases](https://github.com/codesenberg/bombardier/releases) section.
 Alternatively, to get latest and greatest run:
 
-`go get -u github.com/codesenberg/bombardier`
+`go install github.com/codesenberg/bombardier@latest`
 
 ## Usage
 ```
