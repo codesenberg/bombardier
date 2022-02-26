@@ -2,7 +2,10 @@
 Command line utility bombardier is a fast cross-platform HTTP
 benchmarking tool written in Go.
 
-Installation:
+Installation with Go 1.17+:
+  go install github.com/codesenberg/bombardier@latest
+
+Installation with older versions of Go:
   go get -u github.com/codesenberg/bombardier
 
 Usage:
