@@ -18,6 +18,8 @@ const (
 var (
 	version = "unspecified"
 
+	proxyStr string
+
 	emptyConf = config{}
 	parser    = newKingpinParser()
 

@@ -348,11 +348,11 @@ func (b *bombardier) bombard() {
 func (b *bombardier) printIntro() {
 	if b.conf.testType() == counted {
 		fmt.Fprintf(b.out,
-			"Bombarding %v with %v request(s) using %v connection(s)\n",
-			b.conf.url, *b.conf.numReqs, b.conf.numConns)
+			"Bombarding %v with %v request(s) using %v connection(s). Proxy: `%s`\n",
+			b.conf.url, *b.conf.numReqs, b.conf.numConns, proxyStr)
 	} else if b.conf.testType() == timed {
-		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connection(s)\n",
-			b.conf.url, *b.conf.duration, b.conf.numConns)
+		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connection(s). Proxy: `%s`\n",
+			b.conf.url, *b.conf.duration, b.conf.numConns, proxyStr)
 	}
 }
 

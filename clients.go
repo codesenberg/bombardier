@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -56,6 +57,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 	c.host = u.Host
 	c.requestURI = u.RequestURI()
 	c.client = &fasthttp.HostClient{
+
 		Addr:                          u.Host,
 		IsTLS:                         u.Scheme == "https",
 		MaxConns:                      int(opts.maxConns),
@@ -131,12 +133,29 @@ type httpClient struct {
 }
 
 func newHTTPClient(opts *clientOpts) client {
+	var err error
+	var proxyURL *url.URL
+
+	proxyStr = os.Getenv("BOMBARDIER_PROXY")
+
+	if len(proxyStr) != 0 {
+		proxyURL, err = url.Parse(proxyStr)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	c := new(httpClient)
 	tr := &http.Transport{
 		TLSClientConfig:     opts.tlsConfig,
 		MaxIdleConnsPerHost: int(opts.maxConns),
 		DisableKeepAlives:   opts.disableKeepAlives,
 	}
+
+	if len(proxyStr) != 0 {
+		tr.Proxy = http.ProxyURL(proxyURL)
+	}
+
 	tr.DialContext = httpDialContextFunc(opts.bytesRead, opts.bytesWritten)
 	if opts.HTTP2 {
 		_ = http2.ConfigureTransport(tr)
@@ -157,7 +176,7 @@ func newHTTPClient(opts *clientOpts) client {
 
 	c.headers = headersToHTTPHeaders(opts.headers)
 	c.method, c.body, c.bodProd = opts.method, opts.body, opts.bodProd
-	var err error
+
 	c.url, err = url.Parse(opts.url)
 	if err != nil {
 		// opts.url guaranteed to be valid at this point
