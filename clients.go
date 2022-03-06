@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -136,10 +135,8 @@ func newHTTPClient(opts *clientOpts) client {
 	var err error
 	var proxyURL *url.URL
 
-	proxyStr = os.Getenv("BOMBARDIER_PROXY")
-
-	if len(proxyStr) != 0 {
-		proxyURL, err = url.Parse(proxyStr)
+	if len(proxyServer) != 0 {
+		proxyURL, err = url.Parse(proxyServer)
 		if err != nil {
 			panic(err)
 		}
@@ -152,7 +149,7 @@ func newHTTPClient(opts *clientOpts) client {
 		DisableKeepAlives:   opts.disableKeepAlives,
 	}
 
-	if len(proxyStr) != 0 {
+	if len(proxyServer) != 0 {
 		tr.Proxy = http.ProxyURL(proxyURL)
 	}
 
