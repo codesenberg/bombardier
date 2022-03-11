@@ -347,13 +347,14 @@ func (b *bombardier) bombard() {
 }
 
 func (b *bombardier) printIntro() {
+
 	if b.conf.testType() == counted {
 		fmt.Fprintf(b.out,
-			"Bombarding %v with %v request(s) using %v connection(s). Proxy: `%s`\n",
-			b.conf.url, *b.conf.numReqs, b.conf.numConns, proxyServer)
+			"Bombarding %v with %v request(s) using %v connection(s).\n",
+			b.conf.url, *b.conf.numReqs, b.conf.numConns)
 	} else if b.conf.testType() == timed {
-		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connection(s). Proxy: `%s`\n",
-			b.conf.url, *b.conf.duration, b.conf.numConns, proxyServer)
+		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connection(s).\n",
+			b.conf.url, *b.conf.duration, b.conf.numConns)
 	}
 }
 
@@ -442,8 +443,6 @@ func (b *bombardier) disableOutput() {
 }
 
 func main() {
-	proxyServer = os.Getenv("BOMBARDIER_PROXY")
-
 	cfg, err := parser.parse(os.Args)
 	if err != nil {
 		fmt.Println(err)
