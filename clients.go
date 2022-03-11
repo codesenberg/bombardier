@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"github.com/valyala/fasthttp/fasthttpproxy"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -27,8 +28,8 @@ type clientOpts struct {
 	tlsConfig         *tls.Config
 	disableKeepAlives bool
 
-	headers     *headersList
-	url, method string
+	headers               *headersList
+	url, method, proxyUrl string
 
 	body    *string
 	bodProd bodyStreamProducer
@@ -47,6 +48,8 @@ type fasthttpClient struct {
 }
 
 func newFastHTTPClient(opts *clientOpts) client {
+	var dial fasthttp.DialFunc
+
 	c := new(fasthttpClient)
 	u, err := url.Parse(opts.url)
 	if err != nil {
@@ -55,6 +58,20 @@ func newFastHTTPClient(opts *clientOpts) client {
 	}
 	c.host = u.Host
 	c.requestURI = u.RequestURI()
+
+	if opts.proxyUrl != "" {
+		if strings.Contains(opts.proxyUrl, "socks5") {
+			urlProxy := strings.Replace(opts.proxyUrl, "socks5://", "", 1)
+			dial = fasthttpproxy.FasthttpSocksDialer(urlProxy)
+		} else {
+			urlProxy := strings.Replace(opts.proxyUrl, "https://", "", 1)
+			urlProxy = strings.Replace(urlProxy, "http://", "", 1)
+			dial = fasthttpproxy.FasthttpHTTPDialer(urlProxy)
+		}
+	} else {
+		dial = fasthttpDialFunc(opts.bytesRead, opts.bytesWritten)
+	}
+
 	c.client = &fasthttp.HostClient{
 
 		Addr:                          u.Host,
@@ -64,10 +81,9 @@ func newFastHTTPClient(opts *clientOpts) client {
 		WriteTimeout:                  opts.timeout,
 		DisableHeaderNamesNormalizing: true,
 		TLSConfig:                     opts.tlsConfig,
-		Dial: fasthttpDialFunc(
-			opts.bytesRead, opts.bytesWritten,
-		),
+		Dial:                          dial,
 	}
+
 	c.headers = headersToFastHTTPHeaders(opts.headers)
 	c.method, c.body = opts.method, opts.body
 	c.bodProd = opts.bodProd
@@ -133,14 +149,6 @@ type httpClient struct {
 
 func newHTTPClient(opts *clientOpts) client {
 	var err error
-	var proxyURL *url.URL
-
-	if len(proxyServer) != 0 {
-		proxyURL, err = url.Parse(proxyServer)
-		if err != nil {
-			panic(err)
-		}
-	}
 
 	c := new(httpClient)
 	tr := &http.Transport{
@@ -149,8 +157,10 @@ func newHTTPClient(opts *clientOpts) client {
 		DisableKeepAlives:   opts.disableKeepAlives,
 	}
 
-	if len(proxyServer) != 0 {
-		tr.Proxy = http.ProxyURL(proxyURL)
+	if opts.proxyUrl != "" {
+		urlObj := url.URL{}
+		urlProxy, _ := urlObj.Parse(opts.proxyUrl)
+		tr.Proxy = http.ProxyURL(urlProxy)
 	}
 
 	tr.DialContext = httpDialContextFunc(opts.bytesRead, opts.bytesWritten)

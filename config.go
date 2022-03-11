@@ -8,15 +8,15 @@ import (
 )
 
 type config struct {
-	numConns                       uint64
-	numReqs                        *uint64
-	disableKeepAlives         bool
-	duration                       *time.Duration
-	url, method, certPath, keyPath string
-	body, bodyFilePath             string
-	stream                         bool
-	headers                        *headersList
-	timeout                        time.Duration
+	numConns                                 uint64
+	numReqs                                  *uint64
+	disableKeepAlives                        bool
+	duration                                 *time.Duration
+	url, method, certPath, keyPath, proxyUrl string
+	body, bodyFilePath                       string
+	stream                                   bool
+	headers                                  *headersList
+	timeout                                  time.Duration
 	// TODO(codesenberg): printLatencies should probably be
 	// re(named&maked) into printPercentiles or even let
 	// users provide their own percentiles and not just
