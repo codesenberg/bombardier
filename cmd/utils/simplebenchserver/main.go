@@ -4,8 +4,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/alecthomas/kingpin"
 	"github.com/valyala/fasthttp"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var serverPort = kingpin.Flag("port", "port to use for benchmarks").

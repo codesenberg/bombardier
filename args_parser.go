@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/kingpin"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type argsParser interface {
