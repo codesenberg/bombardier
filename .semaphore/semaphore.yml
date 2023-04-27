@@ -7,19 +7,29 @@ agent:
 blocks:
   - name: Test
     task:
+      prologue:
+        commands:
+          - checkout
       jobs:
         - name: Test go 1.18
           commands:
-            - checkout
             - sem-version go 1.18
-            - go test
+            - gotestsum --junitfile report.xml ./...
         - name: Test go 1.19
           commands:
-            - checkout
             - sem-version go 1.19
-            - go test
+            - gotestsum --junitfile report.xml ./...
         - name: Test go 1.20
           commands:
-            - checkout
             - sem-version go 1.20
-            - go test
+            - gotestsum --junitfile report.xml ./...
+      epilogue:
+        always:
+          commands:
+            - '[[ -f report.xml ]] && test-results publish report.xml'
+after_pipeline:
+  task:
+    jobs:
+      - name: Publish test results
+        commands:
+          - test-results gen-pipeline-report
