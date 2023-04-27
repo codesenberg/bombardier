@@ -105,11 +105,7 @@ func (c *fasthttpClient) do() (
 	// fire the request
 	start := time.Now()
 	err = c.client.Do(req, resp)
-	if err != nil {
-		code = -1
-	} else {
-		code = resp.StatusCode()
-	}
+	code = resp.StatusCode()
 	usTaken = uint64(time.Since(start).Nanoseconds() / 1000)
 
 	// release resources
