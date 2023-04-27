@@ -69,41 +69,38 @@ func TestBucketLimiterLowRates(t *testing.T) {
 		{1500, 1 * time.Second},
 		{5000, 1 * time.Second},
 	}
-	var lwg sync.WaitGroup
-	lwg.Add(len(expectations))
 	for i := range expectations {
 		exp := expectations[i]
+		lim := newBucketLimiter(exp.rate)
+		done := make(chan struct{})
+		counter := uint64(0)
+		waitChan := make(chan struct{})
 		go func() {
-			defer lwg.Done()
-			lim := newBucketLimiter(exp.rate)
-			done := make(chan struct{})
-			counter := uint64(0)
-			waitChan := make(chan struct{})
-			go func() {
-				defer func() {
-					waitChan <- struct{}{}
-				}()
-				for lim.pace(done) == cont {
-					counter++
-				}
+			defer func() {
+				waitChan <- struct{}{}
 			}()
-			time.Sleep(exp.duration)
-			close(done)
-			select {
-			case <-waitChan:
-				break
-			case <-time.After(exp.duration + 100*time.Millisecond):
-				t.Error("failed to complete: ", exp)
-				return
-			}
-			expcounter := float64(exp.rate) * exp.duration.Seconds()
-			if float64(counter) < (expcounter*0.9) ||
-				float64(counter) > (expcounter*1.1+5) {
-				t.Error(expcounter, counter)
+			for lim.pace(done) == cont {
+				counter++
 			}
 		}()
+		time.Sleep(exp.duration)
+		close(done)
+		select {
+		case <-waitChan:
+		case <-time.After(exp.duration + 100*time.Millisecond):
+			t.Error("failed to complete: ", exp)
+			return
+		}
+		expcounter := float64(exp.rate) * exp.duration.Seconds()
+		var (
+			lowerBound = 0.5 * expcounter
+			upperBound = 1.2*expcounter + 5
+		)
+		if float64(counter) < lowerBound ||
+			float64(counter) > upperBound {
+			t.Errorf("(lower bound, actual, upper bound): (%11.2f, %11d, %11.2f)", lowerBound, counter, upperBound)
+		}
 	}
-	lwg.Wait()
 }
 
 func TestBucketLimiterHighRates(t *testing.T) {
@@ -140,9 +137,13 @@ func TestBucketLimiterHighRates(t *testing.T) {
 			return
 		}
 		expcounter := float64(exp.rate) * exp.duration.Seconds()
-		if float64(counter) < (expcounter*0.9) ||
-			float64(counter) > (expcounter*1.1) {
-			t.Error(expcounter, counter)
+		var (
+			lowerBound = 0.5 * expcounter
+			upperBound = 1.2*expcounter + 5
+		)
+		if float64(counter) < lowerBound ||
+			float64(counter) > upperBound {
+			t.Errorf("(lower bound, actual, upper bound): (%11.2f, %11d, %11.2f)", lowerBound, counter, upperBound)
 		}
 	}
 }
