@@ -37,10 +37,10 @@ type clientOpts struct {
 }
 
 type fasthttpClient struct {
-	client *fasthttp.HostClient
+	client *fasthttp.Client
 
-	headers                  *fasthttp.RequestHeader
-	host, requestURI, method string
+	headers                          *fasthttp.RequestHeader
+	host, requestURI, method, scheme string
 
 	body    *string
 	bodProd bodyStreamProducer
@@ -55,10 +55,9 @@ func newFastHTTPClient(opts *clientOpts) client {
 	}
 	c.host = u.Host
 	c.requestURI = u.RequestURI()
-	c.client = &fasthttp.HostClient{
-		Addr:                          u.Host,
-		IsTLS:                         u.Scheme == "https",
-		MaxConns:                      int(opts.maxConns),
+	c.scheme = u.Scheme
+	c.client = &fasthttp.Client{
+		MaxConnsPerHost:               int(opts.maxConns),
 		ReadTimeout:                   opts.timeout,
 		WriteTimeout:                  opts.timeout,
 		DisableHeaderNamesNormalizing: true,
@@ -85,13 +84,9 @@ func (c *fasthttpClient) do() (
 	if len(req.Header.Host()) == 0 {
 		req.Header.SetHost(c.host)
 	}
-	req.Header.SetMethod(c.method)
-	if c.client.IsTLS {
-		req.URI().SetScheme("https")
-	} else {
-		req.URI().SetScheme("http")
-	}
 	req.SetRequestURI(c.requestURI)
+	req.Header.SetMethod(c.method)
+	req.URI().SetScheme(c.scheme)
 	if c.body != nil {
 		req.SetBodyString(*c.body)
 	} else {
@@ -105,7 +100,11 @@ func (c *fasthttpClient) do() (
 	// fire the request
 	start := time.Now()
 	err = c.client.Do(req, resp)
-	code = resp.StatusCode()
+	if err != nil {
+		code = -1
+	} else {
+		code = resp.StatusCode()
+	}
 	usTaken = uint64(time.Since(start).Nanoseconds() / 1000)
 
 	// release resources
