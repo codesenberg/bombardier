@@ -10,7 +10,7 @@ blocks:
       prologue:
         commands:
           - checkout
-          - go get gotest.tools/gotestsum
+          - go install gotest.tools/gotestsum@latest
       jobs:
         - name: Test go 1.18
           commands:
