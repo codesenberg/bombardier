@@ -8,31 +8,6 @@ blocks:
   - name: Test
     task:
       jobs:
-        - name: Test go 1.13
-          commands:
-            - checkout
-            - sem-version go 1.13
-            - go test
-        - name: Test go 1.14
-          commands:
-            - checkout
-            - sem-version go 1.14
-            - go test
-        - name: Test go 1.15
-          commands:
-            - checkout
-            - sem-version go 1.15
-            - go test
-        - name: Test go 1.16
-          commands:
-            - checkout
-            - sem-version go 1.16
-            - go test
-        - name: Test go 1.17
-          commands:
-            - checkout
-            - sem-version go 1.17
-            - go test
         - name: Test go 1.18
           commands:
             - checkout

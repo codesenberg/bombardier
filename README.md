@@ -4,15 +4,13 @@ bombardier is a HTTP(S) benchmarking tool. It is written in Go programming langu
 
 With `bombardier v1.1` and higher you can now use `net/http` client if you need to test HTTP/2.x services or want to use a more RFC-compliant HTTP client.
 
-Tested on go1.8 and higher.
+Tested on go1.18 and higher.
 
 ## Installation
 You can grab binaries in the [releases](https://github.com/codesenberg/bombardier/releases) section.
 Alternatively, to get latest and greatest run:
 
-Go 1.17+: `go install github.com/codesenberg/bombardier@latest`
-
-Older versions: `go get -u github.com/codesenberg/bombardier`
+Go 1.18+: `go install github.com/codesenberg/bombardier@latest`
 
 ## Usage
 ```
