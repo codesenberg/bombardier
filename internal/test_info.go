@@ -264,7 +264,8 @@ func (r Results) RequestsStats(percentiles []float64) *RequestsStats {
 	})
 	stddev := 0.0
 	if count > 2 {
-		stddev = math.Sqrt(sumOfSquares / float64(count))
+		const besselCorrection = 1.0
+		stddev = math.Sqrt(sumOfSquares / (float64(count) - besselCorrection))
 	}
 	return &RequestsStats{
 		Mean:   mean,
