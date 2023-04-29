@@ -38,5 +38,5 @@ if __name__ == "__main__":
         build_env = os.environ.copy()
         build_env["GOOS"] = build_os
         build_env["GOARCH"] = build_arch
-        subprocess.run(["go", "build", "-ldflags", "-X main.version=%s" %
+        subprocess.run(["go", "build", "-ldflags", "-s -w -X main.version=%s" %
                         version, "-o", "bombardier-%s-%s%s" % (build_os, build_arch, ext)], env=build_env)
