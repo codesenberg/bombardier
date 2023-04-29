@@ -29,7 +29,7 @@ var (
 		"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS",
 		"PATCH",
 	}
-	cantHaveBody = []string{"GET", "HEAD"}
+	cantHaveBody = []string{"HEAD"}
 
 	errInvalidURL = errors.New(
 		"No hostname or invalid scheme")
@@ -42,7 +42,7 @@ var (
 	errNegativeTimeout = errors.New(
 		"Timeout can't be negative")
 	errBodyNotAllowed = errors.New(
-		"GET and HEAD requests cannot have body")
+		"HEAD requests cannot have body")
 	errNoPathToCert = errors.New(
 		"No Path to TLS Client Certificate")
 	errNoPathToKey = errors.New(
