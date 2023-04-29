@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func TestShouldReturnNilIfNoHeadersWhereSet(t *testing.T) {
@@ -85,8 +85,6 @@ func TestHTTP2Client(t *testing.T) {
 		errChan <- err
 	}()
 
-	// TODO(codesenberg): this should be fixed later
-	time.Sleep(100 * time.Millisecond)
 	bytesRead, bytesWritten := int64(0), int64(0)
 	c := newHTTPClient(&clientOpts{
 		HTTP2: true,
@@ -107,6 +105,10 @@ func TestHTTP2Client(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 		return
+	}
+	ctx := context.Background()
+	if err := s.Shutdown(ctx); err != nil {
+		t.Error(err)
 	}
 	if code != http.StatusOK {
 		t.Errorf("invalid response code: %v", code)
