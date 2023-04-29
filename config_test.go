@@ -14,11 +14,11 @@ func TestCanHaveBody(t *testing.T) {
 		in  string
 		out bool
 	}{
-		{"GET", false},
+		{"HEAD", false},
+		{"GET", true},
 		{"POST", true},
 		{"PUT", true},
 		{"DELETE", true},
-		{"HEAD", false},
 		{"OPTIONS", true},
 	}
 	for _, e := range expectations {
@@ -137,7 +137,7 @@ func TestCheckArgs(t *testing.T) {
 				url:      "http://localhost:8080",
 				headers:  noHeaders,
 				timeout:  defaultTimeout,
-				method:   "GET",
+				method:   "HEAD",
 				body:     "BODY",
 				format:   knownFormat("plain-text"),
 			},
@@ -151,11 +151,39 @@ func TestCheckArgs(t *testing.T) {
 				url:          "http://localhost:8080",
 				headers:      noHeaders,
 				timeout:      defaultTimeout,
-				method:       "GET",
+				method:       "HEAD",
 				bodyFilePath: "testbody.txt",
 				format:       knownFormat("plain-text"),
 			},
 			errBodyNotAllowed,
+		},
+		{
+			config{
+				numConns: defaultNumberOfConns,
+				numReqs:  &defaultNumberOfReqs,
+				duration: &defaultTestDuration,
+				url:      "http://localhost:8080",
+				headers:  noHeaders,
+				timeout:  defaultTimeout,
+				method:   "GET",
+				body:     "BODY",
+				format:   knownFormat("plain-text"),
+			},
+			nil,
+		},
+		{
+			config{
+				numConns:     defaultNumberOfConns,
+				numReqs:      &defaultNumberOfReqs,
+				duration:     &defaultTestDuration,
+				url:          "http://localhost:8080",
+				headers:      noHeaders,
+				timeout:      defaultTimeout,
+				method:       "GET",
+				bodyFilePath: "testbody.txt",
+				format:       knownFormat("plain-text"),
+			},
+			nil,
 		},
 		{
 			config{
