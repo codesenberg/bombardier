@@ -2,15 +2,13 @@ package main
 
 import (
 	"fmt"
-	"net"
-	"net/url"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/alecthomas/kingpin"
+	"github.com/goware/urlx"
 )
 
 type argsParser interface {
@@ -261,73 +259,23 @@ func parsePrintSpec(spec string) (bool, bool, bool, error) {
 	if partsCount < 1 || partsCount > 3 {
 		return false, false, false,
 			fmt.Errorf(
-				"Spec %q has too many parts, at most 3 are allowed", spec,
+				"spec %q has too many parts, at most 3 are allowed", spec,
 			)
 	}
 	return pi, pp, pr, nil
 }
 
-var re = regexp.MustCompile(`^(?P<proto>.+?:\/\/)?.*$`)
-
 func tryParseURL(raw string) (string, error) {
-	rs := raw
-
-	// Try the parse.
-	m := re.FindStringSubmatch(rs)
-	if m == nil {
-		// Just in case.
-		return "", fmt.Errorf(
-			"%v does not appear to be a valid URL",
-			raw,
-		)
-	}
-
-	// If the URL doesn't start with a scheme, assume that the user
-	// meant 'http'.
-	proto := m[1]
-	if proto == "" {
-		rs = "http://" + rs
-	} else if proto != "http://" && proto != "https://" {
-		// We're not interested in other protocols.
-		return "", fmt.Errorf(
-			"%q is not an acceptable protocol (http, https): %v",
-			proto, raw,
-		)
-	}
-
-	u, err := url.Parse(rs)
+	u, err := urlx.Parse(raw)
 	if err != nil {
+		return "", fmt.Errorf("%q does not appear to be a URL: %v", raw, err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
 		return "", fmt.Errorf(
-			"%v does not appear to be a valid URL: %v",
-			raw, err,
+			"only http and https schemes are supported, which %q is not, url was %q", u.Scheme, raw,
 		)
 	}
-
-	// If port is not present append a default one to the u.Host.
-	schemePort := map[string]string{
-		"http":  ":80",
-		"https": ":443",
-	}
-	if u.Port() == "" {
-		u.Host = u.Host + schemePort[u.Scheme]
-	}
-
-	host, port, err := net.SplitHostPort(u.Host)
-	if err != nil {
-		return "", fmt.Errorf(
-			"%v does not appear to be a valid URL",
-			raw,
-		)
-	}
-
-	// If user omitted the host, assume that he meant 'localhost'.
-	// net/http seem to be doing this already, but fasthttp needs
-	// host to be specified explicitly.
-	if host == "" {
-		host = "localhost"
-	}
-
-	u.Host = net.JoinHostPort(host, port)
 
 	return u.String(), nil
 }

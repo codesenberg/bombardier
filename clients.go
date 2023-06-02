@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goware/urlx"
 	"github.com/valyala/fasthttp"
-	"golang.org/x/net/http2"
 )
 
 type client interface {
@@ -48,7 +48,7 @@ type fasthttpClient struct {
 
 func newFastHTTPClient(opts *clientOpts) client {
 	c := new(fasthttpClient)
-	u, err := url.Parse(opts.url)
+	u, err := urlx.Parse(opts.url)
 	if err != nil {
 		// opts.url guaranteed to be valid at this point
 		panic(err)
@@ -78,11 +78,9 @@ func (c *fasthttpClient) do() (
 	// prepare the request
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
+	req.Header.SetHost(c.host)
 	if c.headers != nil {
 		c.headers.CopyTo(&req.Header)
-	}
-	if len(req.Header.Host()) == 0 {
-		req.Header.SetHost(c.host)
 	}
 	req.SetRequestURI(c.requestURI)
 	req.Header.SetMethod(c.method)
@@ -131,15 +129,9 @@ func newHTTPClient(opts *clientOpts) client {
 		TLSClientConfig:     opts.tlsConfig,
 		MaxIdleConnsPerHost: int(opts.maxConns),
 		DisableKeepAlives:   opts.disableKeepAlives,
+		ForceAttemptHTTP2:   opts.HTTP2,
 	}
 	tr.DialContext = httpDialContextFunc(opts.bytesRead, opts.bytesWritten)
-	if opts.HTTP2 {
-		_ = http2.ConfigureTransport(tr)
-	} else {
-		tr.TLSNextProto = make(
-			map[string]func(authority string, c *tls.Conn) http.RoundTripper,
-		)
-	}
 
 	cl := &http.Client{
 		Transport: tr,
@@ -153,7 +145,7 @@ func newHTTPClient(opts *clientOpts) client {
 	c.headers = headersToHTTPHeaders(opts.headers)
 	c.method, c.body, c.bodProd = opts.method, opts.body, opts.bodProd
 	var err error
-	c.url, err = url.Parse(opts.url)
+	c.url, err = urlx.Parse(opts.url)
 	if err != nil {
 		// opts.url guaranteed to be valid at this point
 		panic(err)

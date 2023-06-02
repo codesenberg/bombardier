@@ -22,6 +22,12 @@ func readClientCert(certPath, keyPath string) ([]tls.Certificate, error) {
 // generateTLSConfig - helper function to generate a TLS configuration based on
 // config
 func generateTLSConfig(c config) (*tls.Config, error) {
+	// Return nil, if no custom cert/key pair was provided.
+	// This assumes that the caller has validated that either both or none of
+	// the c.certPath and c.keyPath are set.
+	if c.certPath == "" && c.keyPath == "" {
+		return nil, nil
+	}
 	certs, err := readClientCert(c.certPath, c.keyPath)
 	if err != nil {
 		return nil, err
