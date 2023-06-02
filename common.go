@@ -32,28 +32,28 @@ var (
 	cantHaveBody = []string{"HEAD"}
 
 	errInvalidURL = errors.New(
-		"No hostname or invalid scheme")
+		"no hostname or invalid scheme")
 	errInvalidNumberOfConns = errors.New(
-		"Invalid number of connections(must be > 0)")
+		"invalid number of connections(must be > 0)")
 	errInvalidNumberOfRequests = errors.New(
-		"Invalid number of requests(must be > 0)")
+		"invalid number of requests(must be > 0)")
 	errInvalidTestDuration = errors.New(
-		"Invalid test duration(must be >= 1s)")
+		"invalid test duration(must be >= 1s)")
 	errNegativeTimeout = errors.New(
-		"Timeout can't be negative")
+		"timeout can't be negative")
 	errBodyNotAllowed = errors.New(
 		"HEAD requests cannot have body")
 	errNoPathToCert = errors.New(
-		"No Path to TLS Client Certificate")
+		"no Path to TLS Client Certificate")
 	errNoPathToKey = errors.New(
-		"No Path to TLS Client Certificate Private Key")
+		"no Path to TLS Client Certificate Private Key")
 	errZeroRate = errors.New(
-		"Rate can't be less than 1")
-	errBodyProvidedTwice = errors.New("Use either --body or --body-file")
+		"rate can't be less than 1")
+	errBodyProvidedTwice = errors.New("use either --body or --body-file")
 
-	errInvalidHeaderFormat = errors.New("Invalid header format")
+	errInvalidHeaderFormat = errors.New("invalid header format")
 	errEmptyPrintSpec      = errors.New(
-		"Empty print spec is not a valid print spec")
+		"empty print spec is not a valid print spec")
 )
 
 func init() {
