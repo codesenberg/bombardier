@@ -26,6 +26,7 @@ type clientOpts struct {
 	timeout           time.Duration
 	tlsConfig         *tls.Config
 	disableKeepAlives bool
+	allowRedirects    bool
 
 	headers     *headersList
 	url, method string
@@ -44,6 +45,8 @@ type fasthttpClient struct {
 
 	body    *string
 	bodProd bodyStreamProducer
+
+	allowRedirects bool
 }
 
 func newFastHTTPClient(opts *clientOpts) client {
@@ -69,6 +72,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 	c.headers = headersToFastHTTPHeaders(opts.headers)
 	c.method, c.body = opts.method, opts.body
 	c.bodProd = opts.bodProd
+	c.allowRedirects = opts.allowRedirects
 	return client(c)
 }
 
@@ -97,7 +101,12 @@ func (c *fasthttpClient) do() (
 
 	// fire the request
 	start := time.Now()
-	err = c.client.Do(req, resp)
+	if c.allowRedirects {
+		// stop after 10 consecutive redirects
+		err = c.client.DoRedirects(req, resp, 10)
+	} else {
+		err = c.client.Do(req, resp)
+	}
 	if err != nil {
 		code = -1
 	} else {
@@ -136,9 +145,11 @@ func newHTTPClient(opts *clientOpts) client {
 	cl := &http.Client{
 		Transport: tr,
 		Timeout:   opts.timeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	}
+	if !opts.allowRedirects {
+		cl.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
-		},
+		}
 	}
 	c.client = cl
 

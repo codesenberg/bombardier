@@ -727,3 +727,47 @@ func testBombardierShouldSendCustomHostHeader(
 	b.disableOutput()
 	b.bombard()
 }
+
+func TestBombardierFollowRedirects(t *testing.T) {
+	testAllClients(t, testBombardierFollowRedirects)
+}
+
+func testBombardierFollowRedirects(
+	clientType clientTyp, t *testing.T,
+) {
+	var numFollowRedirects uint64
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" {
+				http.Redirect(rw, r, "/foo", http.StatusFound)
+			} else {
+				rw.WriteHeader(http.StatusOK)
+				numFollowRedirects++
+			}
+		}),
+	)
+	defer s.Close()
+	numReqs := uint64(100)
+	b, e := newBombardier(config{
+		numConns:       defaultNumberOfConns,
+		numReqs:        &numReqs,
+		url:            s.URL,
+		headers:        new(headersList),
+		timeout:        defaultTimeout,
+		method:         "GET",
+		body:           "",
+		clientType:     clientType,
+		format:         knownFormat("plain-text"),
+		allowRedirects: true,
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+	b.bombard()
+
+	if numFollowRedirects != numReqs {
+		t.Errorf("Bombardier does not follow HTTP redirects: expected %v, got %v", numReqs, numFollowRedirects)
+	}
+}

@@ -28,6 +28,7 @@ type kingpinParser struct {
 	latencies         bool
 	insecure          bool
 	disableKeepAlives bool
+	allowRedirects    bool
 	method            string
 	body              string
 	bodyFilePath      string
@@ -111,6 +112,10 @@ func newKingpinParser() argsParser {
 		"Disable HTTP keep-alive. For fasthttp use -H 'Connection: close'").
 		Short('a').
 		BoolVar(&kparser.disableKeepAlives)
+	app.Flag("allowRedirects",
+		"Allow the client to follow HTTP redirects").
+		Short('R').
+		BoolVar(&kparser.allowRedirects)
 
 	app.Flag("header", "HTTP headers to use(can be repeated)").
 		PlaceHolder("\"K: V\"").
@@ -226,6 +231,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		printLatencies:    k.latencies,
 		insecure:          k.insecure,
 		disableKeepAlives: k.disableKeepAlives,
+		allowRedirects:    k.allowRedirects,
 		rate:              k.rate.val,
 		clientType:        k.clientType,
 		printIntro:        pi,
