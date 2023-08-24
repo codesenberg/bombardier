@@ -711,6 +711,27 @@ func TestArgsParsing(t *testing.T) {
 				format:        userDefinedTemplate("/path/to/tmpl.txt"),
 			},
 		},
+		{
+			[][]string{
+				{
+					programName,
+					"localhost:8080",
+					"-R",
+				},
+			},
+			config{
+				numConns:       defaultNumberOfConns,
+				timeout:        defaultTimeout,
+				headers:        new(headersList),
+				method:         "GET",
+				url:            "http://localhost:8080",
+				printIntro:     true,
+				printProgress:  true,
+				printResult:    true,
+				format:         knownFormat("plain-text"),
+				allowRedirects: true,
+			},
+		},
 	}
 	for _, e := range expectations {
 		for _, args := range e.in {

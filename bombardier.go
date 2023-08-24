@@ -132,6 +132,7 @@ func newBombardier(c config) (*bombardier, error) {
 		timeout:           c.timeout,
 		tlsConfig:         tlsConfig,
 		disableKeepAlives: c.disableKeepAlives,
+		allowRedirects:    c.allowRedirects,
 
 		headers:      c.headers,
 		url:          c.url,
