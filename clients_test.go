@@ -161,3 +161,57 @@ func TestHTTP1Clients(t *testing.T) {
 		}
 	}
 }
+
+func TestHTTP1ClientsWithHeaders(t *testing.T) {
+	responseSize := 1024
+	response := bytes.Repeat([]byte{'a'}, responseSize)
+	s := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.ProtoMajor != 1 {
+				t.Errorf("invalid HTTP proto version: %v", r.Proto)
+			}
+
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		},
+	))
+	defer s.Close()
+
+	bytesRead, bytesWritten := int64(0), int64(0)
+	cc := &clientOpts{
+		HTTP2: false,
+
+		headers: &headersList{{"One", "Value one"}},
+		url:     s.URL,
+		method:  "GET",
+
+		body: new(string),
+
+		bytesRead:    &bytesRead,
+		bytesWritten: &bytesWritten,
+	}
+	clients := []client{
+		newHTTPClient(cc),
+		newFastHTTPClient(cc),
+	}
+	for _, c := range clients {
+		bytesRead, bytesWritten = 0, 0
+		code, _, err := c.do()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if code != http.StatusOK {
+			t.Errorf("invalid response code: %v", code)
+		}
+		if bytesRead == 0 {
+			t.Errorf("invalid response size: %v", bytesRead)
+		}
+		if bytesWritten == 0 {
+			t.Errorf("empty request of size: %v", bytesWritten)
+		}
+	}
+}
