@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -20,6 +21,24 @@ func TestErrorMapGet(t *testing.T) {
 	err := errors.New("get")
 	if c := m.get(err); c != 0 {
 		t.Error(c)
+	}
+}
+
+func TestCanonicalisedError(t *testing.T) {
+	m := newErrorMap()
+	for i := 0; i < 10; i++ {
+		m.add(fmt.Errorf("read tcp 10.10.0.62:%d->63.35.24.107:%d: read: connection reset by peer", 1000+i, 2000+i))
+	}
+	m.add(errors.New("tls timeout"))
+
+	e := errorsByFrequency{
+		{"connection reset by peer", 10},
+		{"tls timeout", 1},
+	}
+	if a := m.byFrequency(); !reflect.DeepEqual(a, e) {
+		t.Logf("Expected: %+v", e)
+		t.Logf("Got: %+v", a)
+		t.Fail()
 	}
 }
 
