@@ -24,13 +24,14 @@ func BenchmarkBombardierSingleReqPerf(b *testing.B) {
 		numConns:       defaultNumberOfConns,
 		numReqs:        nil,
 		duration:       &longDuration,
-		url:            "http://" + addr,
+		url:            ParseURLOrPanic("http://" + addr),
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
 		method:         "GET",
 		body:           "",
 		printLatencies: false,
 		clientType:     clientTypeFromString(*clientType),
+		format:         knownFormat("json"),
 	}, b)
 }
 
@@ -40,7 +41,7 @@ func BenchmarkBombardierRateLimitPerf(b *testing.B) {
 		numConns:       defaultNumberOfConns,
 		numReqs:        nil,
 		duration:       &longDuration,
-		url:            "http://" + addr,
+		url:            ParseURLOrPanic("http://" + addr),
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
 		method:         "GET",
@@ -48,6 +49,7 @@ func BenchmarkBombardierRateLimitPerf(b *testing.B) {
 		printLatencies: false,
 		rate:           &highRate,
 		clientType:     clientTypeFromString(*clientType),
+		format:         knownFormat("json"),
 	}, b)
 }
 

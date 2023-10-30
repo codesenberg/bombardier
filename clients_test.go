@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+
+	"github.com/goware/urlx"
 )
 
 func TestShouldReturnNilIfNoHeadersWhereSet(t *testing.T) {
@@ -77,12 +79,16 @@ func TestHTTP2Client(t *testing.T) {
 	defer s.Close()
 
 	bytesRead, bytesWritten := int64(0), int64(0)
+	requestURL, err := urlx.Parse(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
 	c := newHTTPClient(&clientOpts{
 		HTTP2: true,
 
-		headers: new(headersList),
-		url:     s.URL,
-		method:  "GET",
+		headers:    new(headersList),
+		requestURL: requestURL,
+		method:     "GET",
 		tlsConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
@@ -127,12 +133,16 @@ func TestHTTP1Clients(t *testing.T) {
 	defer s.Close()
 
 	bytesRead, bytesWritten := int64(0), int64(0)
+	requestURL, err := urlx.Parse(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
 	cc := &clientOpts{
 		HTTP2: false,
 
-		headers: new(headersList),
-		url:     s.URL,
-		method:  "GET",
+		headers:    new(headersList),
+		requestURL: requestURL,
+		method:     "GET",
 
 		body: new(string),
 

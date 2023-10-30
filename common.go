@@ -2,8 +2,11 @@ package main
 
 import (
 	"errors"
+	"net/url"
 	"sort"
 	"time"
+
+	"github.com/goware/urlx"
 )
 
 const (
@@ -31,8 +34,7 @@ var (
 	}
 	cantHaveBody = []string{"HEAD"}
 
-	errInvalidURL = errors.New(
-		"no hostname or invalid scheme")
+	errUnsupportedScheme    = errors.New("unsupported scheme")
 	errInvalidNumberOfConns = errors.New(
 		"invalid number of connections(must be > 0)")
 	errInvalidNumberOfRequests = errors.New(
@@ -55,6 +57,14 @@ var (
 	errEmptyPrintSpec      = errors.New(
 		"empty print spec is not a valid print spec")
 )
+
+func ParseURLOrPanic(s string) *url.URL {
+	u, err := urlx.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
 
 func init() {
 	sort.Strings(httpMethods)

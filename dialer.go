@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"sync/atomic"
+	"time"
 )
 
 type countingConn struct {
@@ -33,9 +34,10 @@ func (cc *countingConn) Write(b []byte) (n int, err error) {
 
 var fasthttpDialFunc = func(
 	bytesRead, bytesWritten *int64,
+	dialTimeout time.Duration,
 ) func(string) (net.Conn, error) {
 	return func(address string) (net.Conn, error) {
-		conn, err := net.Dial("tcp", address)
+		conn, err := net.DialTimeout("tcp", address, dialTimeout)
 		if err != nil {
 			return nil, err
 		}
@@ -52,8 +54,9 @@ var fasthttpDialFunc = func(
 
 var httpDialContextFunc = func(
 	bytesRead, bytesWritten *int64,
+	dialTimeout time.Duration,
 ) func(context.Context, string, string) (net.Conn, error) {
-	dialer := &net.Dialer{}
+	dialer := &net.Dialer{Timeout: dialTimeout}
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
 		conn, err := dialer.DialContext(ctx, network, address)
 		if err != nil {

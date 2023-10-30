@@ -6,6 +6,8 @@ User-defined templates use Go's text/template package, so you might
 want to check its documentation first.
 There are a bunch of helper methods available inside a template
 besides those described in aforementioned documentation, namely:
+  - URLString()
+    Returns the URL string used for the load test.
   - WithLatencies()
     Tells whether --latencies flag were activated.
   - FormatBinary(numberOfBytes float64) string

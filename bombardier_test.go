@@ -36,7 +36,7 @@ func testBombardierShouldFireSpecifiedNumberOfRequests(
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		numReqs:    &numReqs,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    noHeaders,
 		timeout:    defaultTimeout,
 		method:     "GET",
@@ -71,7 +71,7 @@ func testBombardierShouldFinish(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		duration:   &desiredTestDuration,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    noHeaders,
 		timeout:    defaultTimeout,
 		method:     "GET",
@@ -134,7 +134,7 @@ func testBombardierShouldSendHeaders(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		numReqs:    &numReqs,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    &requestHeaders,
 		timeout:    defaultTimeout,
 		method:     "GET",
@@ -180,7 +180,7 @@ func testBombardierHTTPCodeRecording(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		numReqs:    &numReqs,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    new(headersList),
 		timeout:    defaultTimeout,
 		method:     "GET",
@@ -229,7 +229,7 @@ func testBombardierTimeoutRecoding(clientType clientTyp, t *testing.T) {
 		numConns:   defaultNumberOfConns,
 		numReqs:    &numReqs,
 		duration:   nil,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    new(headersList),
 		timeout:    shortTimeout,
 		method:     "GET",
@@ -267,7 +267,7 @@ func testBombardierThroughputRecording(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		numReqs:    &numReqs,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    new(headersList),
 		timeout:    defaultTimeout,
 		method:     "GET",
@@ -301,7 +301,7 @@ func TestBombardierStatsPrinting(t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
 		numReqs:        &numReqs,
-		url:            s.URL,
+		url:            ParseURLOrPanic(s.URL),
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
 		method:         "GET",
@@ -336,7 +336,7 @@ func TestBombardierErrorIfFailToReadClientCert(t *testing.T) {
 	_, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
 		numReqs:        &numReqs,
-		url:            "http://localhost",
+		url:            ParseURLOrPanic("http://localhost"),
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
 		method:         "GET",
@@ -402,7 +402,7 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:       defaultNumberOfConns,
 		numReqs:        &singleRequest,
-		url:            server.URL,
+		url:            ParseURLOrPanic(server.URL),
 		headers:        new(headersList),
 		timeout:        defaultTimeout,
 		method:         "GET",
@@ -449,7 +449,7 @@ func testBombardierRateLimiting(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		duration:   &testDuration,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    new(headersList),
 		timeout:    defaultTimeout,
 		method:     "GET",
@@ -507,7 +507,7 @@ func testBombardierSendsBody(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		numReqs:    &one,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    new(headersList),
 		timeout:    defaultTimeout,
 		method:     "POST",
@@ -556,7 +556,7 @@ func testBombardierSendsBodyFromFile(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:     defaultNumberOfConns,
 		numReqs:      &one,
-		url:          s.URL,
+		url:          ParseURLOrPanic(s.URL),
 		headers:      new(headersList),
 		timeout:      defaultTimeout,
 		method:       "POST",
@@ -576,7 +576,7 @@ func TestBombardierFileDoesntExist(t *testing.T) {
 	bodyPath := "/does/not/exist.forreal"
 	_, e := newBombardier(config{
 		numConns:     defaultNumberOfConns,
-		url:          "http://example.com",
+		url:          ParseURLOrPanic("http://example.com"),
 		headers:      new(headersList),
 		timeout:      defaultTimeout,
 		method:       "POST",
@@ -620,7 +620,7 @@ func testBombardierStreamsBody(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		numReqs:    &one,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    new(headersList),
 		timeout:    defaultTimeout,
 		method:     "POST",
@@ -673,7 +673,7 @@ func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
 	b, e := newBombardier(config{
 		numConns:     defaultNumberOfConns,
 		numReqs:      &one,
-		url:          s.URL,
+		url:          ParseURLOrPanic(s.URL),
 		headers:      new(headersList),
 		timeout:      defaultTimeout,
 		method:       "POST",
@@ -713,7 +713,7 @@ func testBombardierShouldSendCustomHostHeader(
 	b, e := newBombardier(config{
 		numConns:   defaultNumberOfConns,
 		numReqs:    &numReqs,
-		url:        s.URL,
+		url:        ParseURLOrPanic(s.URL),
 		headers:    &headers,
 		timeout:    defaultTimeout,
 		method:     "GET",

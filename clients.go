@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goware/urlx"
 	"github.com/valyala/fasthttp"
 )
 
@@ -27,8 +26,9 @@ type clientOpts struct {
 	tlsConfig         *tls.Config
 	disableKeepAlives bool
 
-	headers     *headersList
-	url, method string
+	requestURL *url.URL
+	headers    *headersList
+	method     string
 
 	body    *string
 	bodProd bodyStreamProducer
@@ -39,8 +39,9 @@ type clientOpts struct {
 type fasthttpClient struct {
 	client *fasthttp.Client
 
-	headers                          *fasthttp.RequestHeader
-	host, requestURI, method, scheme string
+	headers *fasthttp.RequestHeader
+	uri     *fasthttp.URI
+	method  string
 
 	body    *string
 	bodProd bodyStreamProducer
@@ -48,14 +49,15 @@ type fasthttpClient struct {
 
 func newFastHTTPClient(opts *clientOpts) client {
 	c := new(fasthttpClient)
-	u, err := urlx.Parse(opts.url)
-	if err != nil {
-		// opts.url guaranteed to be valid at this point
+	uri := fasthttp.AcquireURI()
+	if err := uri.Parse(
+		[]byte(opts.requestURL.Host),
+		[]byte(opts.requestURL.String()),
+	); err != nil {
+		// opts.requestURL must always be valid
 		panic(err)
 	}
-	c.host = u.Host
-	c.requestURI = u.RequestURI()
-	c.scheme = u.Scheme
+	c.uri = uri
 	c.client = &fasthttp.Client{
 		MaxConnsPerHost:               int(opts.maxConns),
 		ReadTimeout:                   opts.timeout,
@@ -64,6 +66,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 		TLSConfig:                     opts.tlsConfig,
 		Dial: fasthttpDialFunc(
 			opts.bytesRead, opts.bytesWritten,
+			opts.timeout,
 		),
 	}
 	c.headers = headersToFastHTTPHeaders(opts.headers)
@@ -78,13 +81,12 @@ func (c *fasthttpClient) do() (
 	// prepare the request
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
-	req.Header.SetHost(c.host)
+	req.Header.SetMethod(c.method)
 	if c.headers != nil {
 		c.headers.CopyTo(&req.Header)
 	}
-	req.SetRequestURI(c.requestURI)
-	req.Header.SetMethod(c.method)
-	req.URI().SetScheme(c.scheme)
+	req.SetURI(c.uri)
+	req.UseHostHeader = true
 	if c.body != nil {
 		req.SetBodyString(*c.body)
 	} else {
@@ -130,8 +132,8 @@ func newHTTPClient(opts *clientOpts) client {
 		MaxIdleConnsPerHost: int(opts.maxConns),
 		DisableKeepAlives:   opts.disableKeepAlives,
 		ForceAttemptHTTP2:   opts.HTTP2,
+		DialContext:         httpDialContextFunc(opts.bytesRead, opts.bytesWritten, opts.timeout),
 	}
-	tr.DialContext = httpDialContextFunc(opts.bytesRead, opts.bytesWritten)
 
 	cl := &http.Client{
 		Transport: tr,
@@ -144,12 +146,7 @@ func newHTTPClient(opts *clientOpts) client {
 
 	c.headers = headersToHTTPHeaders(opts.headers)
 	c.method, c.body, c.bodProd = opts.method, opts.body, opts.bodProd
-	var err error
-	c.url, err = urlx.Parse(opts.url)
-	if err != nil {
-		// opts.url guaranteed to be valid at this point
-		panic(err)
-	}
+	c.url = opts.requestURL
 
 	return client(c)
 }

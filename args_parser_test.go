@@ -59,7 +59,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "http://localhost:8080",
+				url:           ParseURLOrPanic("http://localhost:8080"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -75,7 +75,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://localhost",
+				url:           ParseURLOrPanic("https://localhost"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -89,7 +89,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -133,7 +133,7 @@ func TestArgsParsing(t *testing.T) {
 				headers:       new(headersList),
 				method:        "GET",
 				numReqs:       &defaultNumberOfReqs,
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -159,7 +159,7 @@ func TestArgsParsing(t *testing.T) {
 				headers:        new(headersList),
 				printLatencies: true,
 				method:         "GET",
-				url:            "https://somehost.somedomain",
+				url:            ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:     true,
 				printProgress:  true,
 				printResult:    true,
@@ -185,7 +185,7 @@ func TestArgsParsing(t *testing.T) {
 				headers:       new(headersList),
 				insecure:      true,
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -214,7 +214,7 @@ func TestArgsParsing(t *testing.T) {
 				method:        "GET",
 				keyPath:       "testclient.key",
 				certPath:      "testclient.cert",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -254,7 +254,7 @@ func TestArgsParsing(t *testing.T) {
 				headers:       new(headersList),
 				method:        "POST",
 				body:          "reqbody",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -290,7 +290,7 @@ func TestArgsParsing(t *testing.T) {
 					{"Two", "Value two"},
 				},
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -325,7 +325,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				rate:          &ten,
 				printIntro:    true,
 				printProgress: true,
@@ -350,7 +350,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				clientType:    fhttp,
 				printIntro:    true,
 				printProgress: true,
@@ -371,7 +371,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				clientType:    nhttp1,
 				printIntro:    true,
 				printProgress: true,
@@ -392,7 +392,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				clientType:    nhttp2,
 				printIntro:    true,
 				printProgress: true,
@@ -424,7 +424,7 @@ func TestArgsParsing(t *testing.T) {
 				headers:       new(headersList),
 				method:        "GET",
 				bodyFilePath:  "testbody.txt",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -450,7 +450,7 @@ func TestArgsParsing(t *testing.T) {
 				headers:       new(headersList),
 				method:        "GET",
 				stream:        true,
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -469,7 +469,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -514,7 +514,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -559,7 +559,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: false,
 				printResult:   true,
@@ -584,7 +584,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    false,
 				printProgress: false,
 				printResult:   false,
@@ -629,7 +629,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -674,7 +674,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -704,7 +704,7 @@ func TestArgsParsing(t *testing.T) {
 				timeout:       defaultTimeout,
 				headers:       new(headersList),
 				method:        "GET",
-				url:           "https://somehost.somedomain",
+				url:           ParseURLOrPanic("https://somehost.somedomain"),
 				printIntro:    true,
 				printProgress: true,
 				printResult:   true,
@@ -823,21 +823,6 @@ func TestArgsParsingWithInvalidPrintSpec(t *testing.T) {
 	}
 }
 
-func TestTryParseUrl(t *testing.T) {
-	invalid := []string{
-		"ftp://bla:89",
-		"http://bla:bla:bla",
-		"htp:/bla:bla:bla",
-	}
-
-	for _, url := range invalid {
-		gotURL, err := tryParseURL(url)
-		if err == nil {
-			t.Errorf("%q is not a valid URL, parsed as %q", url, gotURL)
-		}
-	}
-}
-
 func TestEmbeddedURLParsing(t *testing.T) {
 	p := newKingpinParser()
 	url := "http://127.0.0.1:8080/to?url=http://10.100.99.41:38667"
@@ -845,7 +830,7 @@ func TestEmbeddedURLParsing(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if c.url != url {
+	if c.url.String() != url {
 		t.Errorf("got %q, wanted %q", c.url, url)
 	}
 }

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"math"
+	"net/url"
 	"sort"
 	"time"
 )
@@ -27,7 +28,7 @@ type Spec struct {
 	TestDuration     time.Duration
 
 	Method string
-	URL    string
+	URL    *url.URL
 
 	Headers []Header
 
@@ -42,6 +43,11 @@ type Spec struct {
 	ClientType ClientType
 
 	Rate *uint64
+}
+
+// RequestURL returns URL as string.
+func (s Spec) RequestURL() string {
+	return s.URL.String()
 }
 
 // IsTimedTest tells if the test was limited by time.

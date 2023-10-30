@@ -75,7 +75,7 @@ const (
 ,"testType":"number-of-requests","numberOfRequests":{{ .NumberOfRequests }}
 {{- end -}}
 
-,"method":"{{ .Method }}","url":{{ .URL | printf "%q" }}
+,"method":"{{ .Method }}","url":{{ .RequestURL | printf "%q" }}
 
 {{- with .Headers -}}
 ,"headers":[

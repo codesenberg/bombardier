@@ -206,7 +206,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 			"unknown format or invalid format spec %q", k.formatSpec,
 		)
 	}
-	url, err := tryParseURL(k.url)
+	url, err := urlx.Parse(k.url)
 	if err != nil {
 		return emptyConf, err
 	}
@@ -263,19 +263,4 @@ func parsePrintSpec(spec string) (bool, bool, bool, error) {
 			)
 	}
 	return pi, pp, pr, nil
-}
-
-func tryParseURL(raw string) (string, error) {
-	u, err := urlx.Parse(raw)
-	if err != nil {
-		return "", fmt.Errorf("%q does not appear to be a URL: %v", raw, err)
-	}
-
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", fmt.Errorf(
-			"only http and https schemes are supported, which %q is not, url was %q", u.Scheme, raw,
-		)
-	}
-
-	return u.String(), nil
 }

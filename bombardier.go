@@ -134,7 +134,7 @@ func newBombardier(c config) (*bombardier, error) {
 		disableKeepAlives: c.disableKeepAlives,
 
 		headers:      c.headers,
-		url:          c.url,
+		requestURL:   c.url,
 		method:       c.method,
 		body:         pbody,
 		bodProd:      bsp,
