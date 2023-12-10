@@ -1,11 +1,40 @@
 package main
 
 import (
+	"regexp"
 	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
 )
+
+var (
+	// capture 1 should capture the canonicalised error message
+	errMsgPatterns = []string{
+		// read tcp 10.10.0.62:60682->63.35.24.107:443: read: connection reset by peer
+		`read tcp [\d.]+:\d+->[\d.]+:\d+: read: (.*)`,
+	}
+
+	errMsgRegexes []*regexp.Regexp
+)
+
+func init() {
+	for _, pattern := range errMsgPatterns {
+		errMsgRegexes = append(errMsgRegexes, regexp.MustCompile(pattern))
+	}
+}
+
+func canonicalizeError(err error) string {
+	msg := err.Error()
+	for _, errMsgRegex := range errMsgRegexes {
+		matches := errMsgRegex.FindStringSubmatch(msg)
+		if matches != nil {
+			return matches[1]
+		}
+	}
+
+	return msg
+}
 
 type errorMap struct {
 	mu sync.RWMutex
@@ -19,7 +48,7 @@ func newErrorMap() *errorMap {
 }
 
 func (e *errorMap) add(err error) {
-	s := err.Error()
+	s := canonicalizeError(err)
 	e.mu.RLock()
 	c, ok := e.m[s]
 	e.mu.RUnlock()
