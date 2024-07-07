@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -167,7 +166,7 @@ func (c *httpClient) do() (
 	if c.body != nil {
 		br := strings.NewReader(*c.body)
 		req.ContentLength = int64(len(*c.body))
-		req.Body = ioutil.NopCloser(br)
+		req.Body = io.NopCloser(br)
 	} else {
 		bs, bserr := c.bodProd()
 		if bserr != nil {
@@ -183,7 +182,7 @@ func (c *httpClient) do() (
 	} else {
 		code = resp.StatusCode
 
-		_, berr := io.Copy(ioutil.Discard, resp.Body)
+		_, berr := io.Copy(io.Discard, resp.Body)
 		if berr != nil {
 			err = berr
 		}
