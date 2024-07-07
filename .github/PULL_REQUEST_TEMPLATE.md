@@ -1,4 +1,4 @@
-Before submitting a pull request be sure to check the code with [gometalinter](https://github.com/alecthomas/gometalinter).
+Before submitting a pull request be sure to check the code with [golangci-lint](https://github.com/golangci/golangci-lint).
 This can save a considerable amount of time during code review.
 
 Generally, try to follow this format when writing commit messages:
