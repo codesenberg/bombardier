@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -488,7 +488,7 @@ func testBombardierSendsBody(clientType clientTyp, t *testing.T) {
 	requestBody := "abracadabra"
 	s := httptest.NewServer(
 		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 				return
@@ -530,14 +530,14 @@ func TestBombardierSendsBodyFromFile(t *testing.T) {
 func testBombardierSendsBodyFromFile(clientType clientTyp, t *testing.T) {
 	response := []byte("OK")
 	bodyPath := "testbody.txt"
-	requestBody, err := ioutil.ReadFile(bodyPath)
+	requestBody, err := os.ReadFile(bodyPath)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	s := httptest.NewServer(
 		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 				return
@@ -601,7 +601,7 @@ func testBombardierStreamsBody(clientType clientTyp, t *testing.T) {
 			if te := r.TransferEncoding; !reflect.DeepEqual(te, []string{"chunked"}) {
 				t.Errorf("Expected chunked transfer encoding, but got %v", te)
 			}
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 				return
@@ -644,7 +644,7 @@ func TestBombardierStreamsBodyFromFile(t *testing.T) {
 func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
 	response := []byte("OK")
 	bodyPath := "testbody.txt"
-	requestBody, err := ioutil.ReadFile(bodyPath)
+	requestBody, err := os.ReadFile(bodyPath)
 	if err != nil {
 		t.Error(err)
 		return
@@ -654,7 +654,7 @@ func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
 			if te := r.TransferEncoding; !reflect.DeepEqual(te, []string{"chunked"}) {
 				t.Errorf("Expected chunked transfer encoding, but got %v", te)
 			}
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 				return

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
@@ -108,7 +107,7 @@ func newBombardier(c config) (*bombardier, error) {
 			}
 		} else {
 			bsp = func() (io.ReadCloser, error) {
-				return ioutil.NopCloser(
+				return io.NopCloser(
 					proxyReader{strings.NewReader(c.body)},
 				), nil
 			}
@@ -117,7 +116,7 @@ func newBombardier(c config) (*bombardier, error) {
 		pbody = &c.body
 		if c.bodyFilePath != "" {
 			var bodyBytes []byte
-			bodyBytes, err = ioutil.ReadFile(c.bodyFilePath)
+			bodyBytes, err = os.ReadFile(c.bodyFilePath)
 			if err != nil {
 				return nil, err
 			}
@@ -144,7 +143,7 @@ func newBombardier(c config) (*bombardier, error) {
 	b.client = makeHTTPClient(c.clientType, cc)
 
 	if !b.conf.printProgress {
-		b.bar.Output = ioutil.Discard
+		b.bar.Output = io.Discard
 		b.bar.NotPrint = true
 	}
 
@@ -184,7 +183,7 @@ func (b *bombardier) prepareTemplate() (*template.Template, error) {
 	case knownFormat:
 		templateBytes = f.template()
 	case userDefinedTemplate:
-		templateBytes, err = ioutil.ReadFile(string(f))
+		templateBytes, err = os.ReadFile(string(f))
 		if err != nil {
 			return nil, err
 		}
@@ -436,7 +435,7 @@ func (b *bombardier) redirectOutputTo(out io.Writer) {
 }
 
 func (b *bombardier) disableOutput() {
-	b.redirectOutputTo(ioutil.Discard)
+	b.redirectOutputTo(io.Discard)
 	b.bar.NotPrint = true
 }
 
