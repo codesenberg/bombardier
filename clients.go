@@ -81,10 +81,10 @@ func (c *fasthttpClient) do() (
 	// prepare the request
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
-	req.Header.SetMethod(c.method)
 	if c.headers != nil {
 		c.headers.CopyTo(&req.Header)
 	}
+	req.Header.SetMethod(c.method)
 	req.SetURI(c.uri)
 	req.UseHostHeader = true
 	if c.body != nil {
