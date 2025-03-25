@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bombardier UI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Bombardier UI</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="bombardierForm">
+                            <div class="mb-3">
+                                <label for="url" class="form-label">URL</label>
+                                <input type="url" class="form-control" id="url" required placeholder="http://example.com">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="method" class="form-label">Method</label>
+                                <select class="form-select" id="method">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                    <option value="HEAD">HEAD</option>
+                                    <option value="OPTIONS">OPTIONS</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="numConnections" class="form-label">Number of Connections</label>
+                                <input type="number" class="form-control" id="numConnections" min="1" value="125">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="testType" id="testTypeRequests" value="requests" checked>
+                                    <label class="form-check-label" for="testTypeRequests">Number of Requests</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="testType" id="testTypeDuration" value="duration">
+                                    <label class="form-check-label" for="testTypeDuration">Duration</label>
+                                </div>
+                                
+                                <div id="requestsInput" class="mt-2">
+                                    <input type="number" class="form-control" id="numRequests" min="1" value="10000">
+                                </div>
+                                
+                                <div id="durationInput" class="mt-2 d-none">
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="duration" min="1" value="10">
+                                        <span class="input-group-text">seconds</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="timeout" class="form-label">Timeout (ms)</label>
+                                <input type="number" class="form-control" id="timeout" min="1" value="2000">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="rate" class="form-label">Rate Limit (optional)</label>
+                                <input type="number" class="form-control" id="rate" min="1" placeholder="Requests per second">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="latencies" checked>
+                                    <label class="form-check-label" for="latencies">
+                                        Print Latency Statistics
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="insecureSkipVerify">
+                                    <label class="form-check-label" for="insecureSkipVerify">
+                                        Insecure (Skip TLS Verification)
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="disableKeepAlives">
+                                    <label class="form-check-label" for="disableKeepAlives">
+                                        Disable Keep-Alives
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="clientType" class="form-label">HTTP Client</label>
+                                <select class="form-select" id="clientType">
+                                    <option value="fasthttp">fasthttp (default)</option>
+                                    <option value="nethttp">net/http (HTTP/1.x or HTTP/2)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="headers" class="form-label">Headers (one per line, format: Key: Value)</label>
+                                <textarea class="form-control" id="headers" rows="3" placeholder="Content-Type: application/json"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="body" class="form-label">Request Body</label>
+                                <textarea class="form-control" id="body" rows="5" placeholder='{"key": "value"}'></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" id="runTest">Run Test</button>
+                            <button type="button" class="btn btn-secondary" id="saveConfig">Save Config</button>
+                            <button type="button" class="btn btn-info" id="loadConfig">Load Config</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="testStatus" class="alert alert-info d-none">
+                            Running test...
+                        </div>
+                        <div id="testError" class="alert alert-danger d-none"></div>
+                        <pre id="testResults" class="results-container"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Configurations Modal -->
+    <div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configModalLabel">Saved Configurations</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="savedConfigs" class="list-group">
+                        <!-- Saved configs will be populated here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Configuration Modal -->
+    <div class="modal fade" id="saveConfigModal" tabindex="-1" aria-labelledby="saveConfigModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="saveConfigModalLabel">Save Configuration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="configName" class="form-label">Configuration Name</label>
+                        <input type="text" class="form-control" id="configName" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmSaveConfig">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 

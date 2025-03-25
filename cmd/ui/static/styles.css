@@ -1,0 +1,72 @@
+/* General styles */
+body {
+    padding-bottom: 40px;
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.card {
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: #f1f1f1;
+}
+
+/* Test results */
+.results-container {
+    height: 500px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    white-space: pre-wrap;
+    font-family: monospace;
+}
+
+/* Form controls */
+.form-label {
+    font-weight: 500;
+}
+
+textarea {
+    font-family: monospace;
+}
+
+/* Button styling */
+.btn-primary {
+    background-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+}
+
+/* Animations */
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.running-test {
+    animation: blink 1s infinite;
+}
+
+/* For saved configs in modal */
+.list-group-item {
+    cursor: pointer;
+}
+
+.list-group-item:hover {
+    background-color: #f1f1f1;
+}
+
+.list-group-item-action:active {
+    background-color: #e9ecef;
+} 

@@ -17,6 +17,38 @@ bombardier [<flags>] <url>
 
 For a more detailed information about flags consult [GoDoc](http://godoc.org/github.com/codesenberg/bombardier).
 
+## Web UI
+Bombardier now includes a user-friendly web UI that makes it easier to configure and run tests. To use the web UI:
+
+1. Build the UI tool:
+   ```
+   # On Windows
+   cd cmd/ui
+   go build -o ../../bombardier-ui.exe
+   
+   # On Linux/macOS
+   cd cmd/ui
+   go build -o ../../bombardier-ui
+   chmod +x ../../bombardier-ui
+   ```
+
+2. Run the UI tool:
+   ```
+   # On Windows
+   bombardier-ui.exe
+   
+   # On Linux/macOS
+   ./bombardier-ui
+   ```
+
+3. Open your browser and navigate to http://localhost:8080
+
+The UI provides the following features:
+- Configure all bombardier options through a simple form
+- Execute tests and view results in real-time
+- Save and load test configurations
+- Visualize test results
+
 ## Known issues
 AFAIK, it's impossible to pass Host header correctly with `fasthttp`, you can use `net/http`(`--http1`/`--http2` flags) to workaround this issue.
 
