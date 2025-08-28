@@ -34,6 +34,7 @@ type kingpinParser struct {
 	stream            bool
 	certPath          string
 	keyPath           string
+	keyLogPath        string
 	rate              *nullableUint64
 	clientType        clientTyp
 
@@ -54,6 +55,7 @@ func newKingpinParser() argsParser {
 		method:       "GET",
 		body:         "",
 		bodyFilePath: "",
+		keyLogPath:   "",
 		stream:       false,
 		certPath:     "",
 		keyPath:      "",
@@ -102,6 +104,9 @@ func newKingpinParser() argsParser {
 	app.Flag("key", "Path to the client's TLS Certificate Private Key").
 		Default("").
 		StringVar(&kparser.keyPath)
+	app.Flag("key-log-path", "Path used to log TLS keys for Wireshark").
+		Default("").
+		StringVar(&kparser.keyLogPath)
 	app.Flag("insecure",
 		"Controls whether a client verifies the server's certificate"+
 			" chain and host name").
@@ -222,6 +227,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		bodyFilePath:      k.bodyFilePath,
 		stream:            k.stream,
 		keyPath:           k.keyPath,
+		keyLogPath:        k.keyLogPath,
 		certPath:          k.certPath,
 		printLatencies:    k.latencies,
 		insecure:          k.insecure,
