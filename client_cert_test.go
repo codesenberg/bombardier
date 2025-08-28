@@ -39,3 +39,26 @@ func TestGenerateTLSConfig(t *testing.T) {
 		}
 	}
 }
+
+func TestInvalidKeyLogPath(t *testing.T) {
+	expectations := []struct {
+		keyLogPath string
+		errIsNil   bool
+	}{
+		{
+			keyLogPath: "/path/to/invalid/log",
+			errIsNil:   false,
+		},
+	}
+	for _, e := range expectations {
+		_, err := generateTLSConfig(
+			config{
+				url:        ParseURLOrPanic("https://doesnt.exist.com"),
+				keyLogPath: e.keyLogPath,
+			},
+		)
+		if (err == nil) != e.errIsNil {
+			t.Error(e.keyLogPath, err)
+		}
+	}
+}

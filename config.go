@@ -15,6 +15,7 @@ type config struct {
 	url                       *url.URL
 	method, certPath, keyPath string
 	body, bodyFilePath        string
+	keyLogPath                string
 	stream                    bool
 	headers                   *headersList
 	timeout                   time.Duration
