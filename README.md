@@ -10,6 +10,12 @@ Alternatively, to get latest and greatest run:
 
 Go 1.18+: `go install github.com/codesenberg/bombardier@latest`
 
+Another alternative is to use [mise](https://github.com/jdx/mise), the polyglot tools version manager and use a command like this to install it :
+
+```shell
+mise use -g bombardier@latest
+```
+
 ## Usage
 ```
 bombardier [<flags>] <url>
