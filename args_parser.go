@@ -39,6 +39,7 @@ type kingpinParser struct {
 
 	printSpec *nullableString
 	noPrint   bool
+	detailed  bool
 
 	formatSpec string
 }
@@ -63,6 +64,7 @@ func newKingpinParser() argsParser {
 		clientType:   fhttp,
 		printSpec:    new(nullableString),
 		noPrint:      false,
+		detailed:     false,
 		formatSpec:   "plain-text",
 	}
 
@@ -164,6 +166,9 @@ func newKingpinParser() argsParser {
 		Short('q').
 		BoolVar(&kparser.noPrint)
 
+	app.Flag("detailed", "Print detailed statistics").
+		BoolVar(&kparser.detailed)
+
 	app.Flag("format", "Which format to use to output the result. "+
 		"<spec> is either a name (or its shorthand) of some format "+
 		"understood by bombardier or a path to the user-defined template, "+
@@ -231,6 +236,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		printIntro:        pi,
 		printProgress:     pp,
 		printResult:       pr,
+		printDetailed:     k.detailed,
 		format:            format,
 	}, nil
 }

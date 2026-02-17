@@ -57,6 +57,12 @@ const (
 {{ "  HTTP codes:" }}
 {{ printf "    1xx - %v, 2xx - %v, 3xx - %v, 4xx - %v, 5xx - %v" .Req1XX .Req2XX .Req3XX .Req4XX .Req5XX }}
 	{{- printf "\n    others - %v" .Others }}
+	{{- if WithDetailedStats }}
+		{{- "\n    Detailed status codes:" }}
+		{{- range $pair := SortedStatusCodes .StatusCodes }}
+			{{- printf "\n      %d - %d" $pair.Code $pair.Count }}
+		{{- end -}}
+	{{- end }}
 	{{- with .Errors }}
 		{{- "\n  Errors:"}}
 		{{- range . }}
@@ -128,6 +134,13 @@ const (
 ,"req4xx":{{ .Req4XX -}}
 ,"req5xx":{{ .Req5XX -}}
 ,"others":{{ .Others -}}
+
+,"statusCodes":{
+{{- range $index, $pair := SortedStatusCodes .StatusCodes -}}
+{{- if ne $index 0 -}},{{- end -}}
+{{- printf "\"%d\":%d" $pair.Code $pair.Count -}}
+{{- end -}}
+}
 
 {{- with .Errors -}}
 ,"errors":[

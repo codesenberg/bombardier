@@ -26,7 +26,7 @@ type config struct {
 	rate                     *uint64
 	clientType               clientTyp
 
-	printIntro, printProgress, printResult bool
+	printIntro, printProgress, printResult, printDetailed bool
 
 	format format
 }
