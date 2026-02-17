@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -24,12 +24,8 @@ type bombardier struct {
 	bytesRead, bytesWritten int64
 
 	// HTTP codes
-	req1xx uint64
-	req2xx uint64
-	req3xx uint64
-	req4xx uint64
-	req5xx uint64
-	others uint64
+	statsMu     sync.Mutex
+	statusCodes map[int]uint64
 
 	conf        config
 	barrier     completionBarrier
@@ -67,6 +63,7 @@ func newBombardier(c config) (*bombardier, error) {
 	b.conf = c
 	b.latencies = uhist.Default()
 	b.requests = fhist.Default()
+	b.statusCodes = make(map[int]uint64)
 
 	if b.conf.testType() == counted {
 		b.bar = pb.New64(int64(*b.conf.numReqs))
@@ -196,8 +193,12 @@ func (b *bombardier) prepareTemplate() (*template.Template, error) {
 			"WithLatencies": func() bool {
 				return b.conf.printLatencies
 			},
-			"FormatBinary": formatBinary,
-			"FormatTimeUs": formatTimeUs,
+			"WithDetailedStats": func() bool {
+				return b.conf.printDetailed
+			},
+			"SortedStatusCodes": sortedStatusCodes,
+			"FormatBinary":      formatBinary,
+			"FormatTimeUs":      formatTimeUs,
 			"FormatTimeUsUint64": func(us uint64) string {
 				return formatTimeUs(float64(us))
 			},
@@ -230,22 +231,10 @@ func (b *bombardier) writeStatistics(
 	b.rpl.Lock()
 	b.reqs++
 	b.rpl.Unlock()
-	var counter *uint64
-	switch code / 100 {
-	case 1:
-		counter = &b.req1xx
-	case 2:
-		counter = &b.req2xx
-	case 3:
-		counter = &b.req3xx
-	case 4:
-		counter = &b.req4xx
-	case 5:
-		counter = &b.req5xx
-	default:
-		counter = &b.others
-	}
-	atomic.AddUint64(counter, 1)
+
+	b.statsMu.Lock()
+	b.statusCodes[code]++
+	b.statsMu.Unlock()
 }
 
 func (b *bombardier) performSingleRequest() {
@@ -381,13 +370,6 @@ func (b *bombardier) gatherInfo() internal.TestInfo {
 			BytesWritten: b.bytesWritten,
 			TimeTaken:    b.timeTaken,
 
-			Req1XX: b.req1xx,
-			Req2XX: b.req2xx,
-			Req3XX: b.req3xx,
-			Req4XX: b.req4xx,
-			Req5XX: b.req5xx,
-			Others: b.others,
-
 			Latencies: b.latencies,
 			Requests:  b.requests,
 		},
@@ -400,6 +382,37 @@ func (b *bombardier) gatherInfo() internal.TestInfo {
 	} else if testType == counted {
 		info.Spec.NumberOfRequests = *b.conf.numReqs
 	}
+
+	sc := make(map[int]uint64, len(b.statusCodes))
+	var req1xx, req2xx, req3xx, req4xx, req5xx, others uint64
+
+	b.statsMu.Lock()
+	for k, v := range b.statusCodes {
+		sc[k] = v
+		switch k / 100 {
+		case 1:
+			req1xx += v
+		case 2:
+			req2xx += v
+		case 3:
+			req3xx += v
+		case 4:
+			req4xx += v
+		case 5:
+			req5xx += v
+		default:
+			others += v
+		}
+	}
+	b.statsMu.Unlock()
+
+	info.Result.Req1XX = req1xx
+	info.Result.Req2XX = req2xx
+	info.Result.Req3XX = req3xx
+	info.Result.Req4XX = req4xx
+	info.Result.Req5XX = req5xx
+	info.Result.Others = others
+	info.Result.StatusCodes = sc
 
 	if b.conf.headers != nil {
 		for _, h := range *b.conf.headers {
@@ -438,6 +451,24 @@ func (b *bombardier) redirectOutputTo(out io.Writer) {
 func (b *bombardier) disableOutput() {
 	b.redirectOutputTo(ioutil.Discard)
 	b.bar.NotPrint = true
+}
+
+type statusCodePair struct {
+	Code  int
+	Count uint64
+}
+
+func sortedStatusCodes(m map[int]uint64) []statusCodePair {
+	keys := make([]int, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	res := make([]statusCodePair, len(keys))
+	for i, k := range keys {
+		res[i] = statusCodePair{Code: k, Count: m[k]}
+	}
+	return res
 }
 
 func main() {

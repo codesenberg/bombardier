@@ -193,16 +193,17 @@ func testBombardierHTTPCodeRecording(clientType clientTyp, t *testing.T) {
 	}
 	b.disableOutput()
 	b.bombard()
+	info := b.gatherInfo()
 	expectation := []struct {
 		name     string
 		reqsGot  uint64
 		expected uint64
 	}{
-		{"errored", b.others, eachCodeCount * 2},
-		{"2xx", b.req2xx, eachCodeCount},
-		{"3xx", b.req3xx, eachCodeCount},
-		{"4xx", b.req4xx, eachCodeCount},
-		{"5xx", b.req5xx, eachCodeCount},
+		{"errored", info.Result.Others, eachCodeCount * 2},
+		{"2xx", info.Result.Req2XX, eachCodeCount},
+		{"3xx", info.Result.Req3XX, eachCodeCount},
+		{"4xx", info.Result.Req4XX, eachCodeCount},
+		{"5xx", info.Result.Req5XX, eachCodeCount},
 	}
 	for _, e := range expectation {
 		if e.reqsGot != e.expected {
@@ -421,8 +422,11 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 	b.disableOutput()
 
 	b.bombard()
-	if b.req2xx != 1 {
-		t.Error("no 2xx responses, total =", b.reqs, ", 1xx/2xx/3xx/4xx/5xx =", b.req1xx, b.req2xx, b.req3xx, b.req4xx, b.req5xx)
+	info := b.gatherInfo()
+	if info.Result.Req2XX != 1 {
+		t.Error("no 2xx responses, total =", b.reqs, ", 1xx/2xx/3xx/4xx/5xx =",
+			info.Result.Req1XX, info.Result.Req2XX, info.Result.Req3XX,
+			info.Result.Req4XX, info.Result.Req5XX)
 	}
 
 	server.Close()
@@ -464,9 +468,10 @@ func testBombardierRateLimiting(clientType clientTyp, t *testing.T) {
 	}
 	b.disableOutput()
 	b.bombard()
-	if float64(b.req2xx) < float64(rate)*0.75 ||
-		float64(b.req2xx) > float64(rate)*1.25 {
-		t.Error(rate, b.req2xx)
+	info := b.gatherInfo()
+	if float64(info.Result.Req2XX) < float64(rate)*0.75 ||
+		float64(info.Result.Req2XX) > float64(rate)*1.25 {
+		t.Error(rate, info.Result.Req2XX)
 	}
 }
 
