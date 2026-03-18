@@ -128,6 +128,7 @@ func newBombardier(c config) (*bombardier, error) {
 
 	cc := &clientOpts{
 		HTTP2:             false,
+		HTTP3:             false,
 		maxConns:          c.numConns,
 		timeout:           c.timeout,
 		tlsConfig:         tlsConfig,
@@ -166,6 +167,9 @@ func makeHTTPClient(clientType clientTyp, cc *clientOpts) client {
 		cl = newHTTPClient(cc)
 	case nhttp2:
 		cc.HTTP2 = true
+		cl = newHTTPClient(cc)
+	case nhttp3:
+		cc.HTTP3 = true
 		cl = newHTTPClient(cc)
 	case fhttp:
 		fallthrough

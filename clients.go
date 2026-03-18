@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/quic-go/quic-go/http3"
 	"github.com/valyala/fasthttp"
 )
 
@@ -20,6 +21,7 @@ type bodyStreamProducer func() (io.ReadCloser, error)
 
 type clientOpts struct {
 	HTTP2 bool
+	HTTP3 bool
 
 	maxConns          uint64
 	timeout           time.Duration
@@ -127,22 +129,39 @@ type httpClient struct {
 
 func newHTTPClient(opts *clientOpts) client {
 	c := new(httpClient)
-	tr := &http.Transport{
-		TLSClientConfig:     opts.tlsConfig,
-		MaxIdleConnsPerHost: int(opts.maxConns),
-		DisableKeepAlives:   opts.disableKeepAlives,
-		ForceAttemptHTTP2:   opts.HTTP2,
-		DialContext:         httpDialContextFunc(opts.bytesRead, opts.bytesWritten, opts.timeout),
-	}
 
-	cl := &http.Client{
-		Transport: tr,
-		Timeout:   opts.timeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	if opts.HTTP3 {
+		// HTTP/3 transport
+		h3tr := &http3.Transport{
+			TLSClientConfig: opts.tlsConfig,
+		}
+		c.client = &http.Client{
+			Transport: h3tr,
+			Timeout:   opts.timeout,
+			// Stop following redirects
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+	} else {
+		// HTTP/1.1 or HTTP/2
+		tr := &http.Transport{
+			TLSClientConfig:     opts.tlsConfig,
+			MaxIdleConnsPerHost: int(opts.maxConns),
+			DisableKeepAlives:   opts.disableKeepAlives,
+			ForceAttemptHTTP2:   opts.HTTP2,
+			DialContext:         httpDialContextFunc(opts.bytesRead, opts.bytesWritten, opts.timeout),
+		}
+
+		cl := &http.Client{
+			Transport: tr,
+			Timeout:   opts.timeout,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		c.client = cl
 	}
-	c.client = cl
 
 	c.headers = headersToHTTPHeaders(opts.headers)
 	c.method, c.body, c.bodProd = opts.method, opts.body, opts.bodProd

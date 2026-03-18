@@ -160,6 +160,7 @@ const (
 	fhttp clientTyp = iota
 	nhttp1
 	nhttp2
+	nhttp3
 )
 
 func (ct clientTyp) String() string {

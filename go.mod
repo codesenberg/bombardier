@@ -1,6 +1,6 @@
 module github.com/codesenberg/bombardier
 
-go 1.22
+go 1.24
 
 toolchain go1.24.0
 
@@ -15,15 +15,21 @@ require (
 )
 
 require (
+	github.com/quic-go/qpack v0.6.0 // indirect
+	golang.org/x/crypto v0.41.0 // indirect
+)
+
+require (
 	github.com/PuerkitoBio/purell v1.2.1 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/quic-go/quic-go v0.59.0
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 )

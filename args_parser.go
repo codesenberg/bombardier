@@ -148,6 +148,12 @@ func newKingpinParser() argsParser {
 			return nil
 		}).
 		Bool()
+	app.Flag("http3", "Use net/http client with enabled HTTP/3.0").
+		Action(func(*kingpin.ParseContext) error {
+			kparser.clientType = nhttp3
+			return nil
+		}).
+		Bool()
 
 	app.Flag(
 		"print", "Specifies what to output. Comma-separated list of values"+
