@@ -11,8 +11,8 @@ func TestGenerateTLSConfig(t *testing.T) {
 		errIsNil bool
 	}{
 		{
-			certPath: "testclient.cert",
-			keyPath:  "testclient.key",
+			certPath: "testdata/testclient.cert",
+			keyPath:  "testdata/testclient.key",
 			errIsNil: true,
 		},
 		{

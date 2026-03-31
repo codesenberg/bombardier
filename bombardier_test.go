@@ -356,7 +356,7 @@ func TestBombardierClientCerts(t *testing.T) {
 }
 
 func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
-	clientCert, err := tls.LoadX509KeyPair("testclient.cert", "testclient.key")
+	clientCert, err := tls.LoadX509KeyPair("testdata/testclient.cert", "testdata/testclient.key")
 	if err != nil {
 		t.Error(err)
 		return
@@ -368,7 +368,7 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 		return
 	}
 
-	servertCert, err := tls.LoadX509KeyPair("testserver.cert", "testserver.key")
+	servertCert, err := tls.LoadX509KeyPair("testdata/testserver.cert", "testdata/testserver.key")
 	if err != nil {
 		t.Error(err)
 		return
@@ -408,8 +408,8 @@ func testBombardierClientCerts(clientType clientTyp, t *testing.T) {
 		method:         "GET",
 		body:           "",
 		printLatencies: true,
-		certPath:       "testclient.cert",
-		keyPath:        "testclient.key",
+		certPath:       "testdata/testclient.cert",
+		keyPath:        "testdata/testclient.key",
 		insecure:       true,
 		clientType:     clientType,
 		format:         knownFormat("plain-text"),
@@ -529,7 +529,7 @@ func TestBombardierSendsBodyFromFile(t *testing.T) {
 
 func testBombardierSendsBodyFromFile(clientType clientTyp, t *testing.T) {
 	response := []byte("OK")
-	bodyPath := "testbody.txt"
+	bodyPath := "testdata/testbody.txt"
 	requestBody, err := ioutil.ReadFile(bodyPath)
 	if err != nil {
 		t.Error(err)
@@ -643,7 +643,7 @@ func TestBombardierStreamsBodyFromFile(t *testing.T) {
 
 func testBombardierStreamsBodyFromFile(clientType clientTyp, t *testing.T) {
 	response := []byte("OK")
-	bodyPath := "testbody.txt"
+	bodyPath := "testdata/testbody.txt"
 	requestBody, err := ioutil.ReadFile(bodyPath)
 	if err != nil {
 		t.Error(err)
