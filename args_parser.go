@@ -31,6 +31,7 @@ type kingpinParser struct {
 	method            string
 	body              string
 	bodyFilePath      string
+	form              []string
 	stream            bool
 	certPath          string
 	keyPath           string
@@ -92,6 +93,12 @@ func newKingpinParser() argsParser {
 		Default("").
 		Short('f').
 		StringVar(&kparser.bodyFilePath)
+	app.Flag("form",
+		"Multipart form field, name=value or name=@file to attach a file"+
+			" (can be repeated). Sets Content-Type with an auto boundary").
+		PlaceHolder("name=value").
+		Short('F').
+		StringsVar(&kparser.form)
 	app.Flag("stream", "Specify whether to stream body using "+
 		"chunked transfer encoding or to serve it from memory").
 		Short('s').
@@ -220,6 +227,7 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 		method:            k.method,
 		body:              k.body,
 		bodyFilePath:      k.bodyFilePath,
+		formData:          k.form,
 		stream:            k.stream,
 		keyPath:           k.keyPath,
 		certPath:          k.certPath,

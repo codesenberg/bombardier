@@ -54,3 +54,7 @@ Statistics        Avg      Stdev        Max
     dialing to the given TCP address timed out - 5
   Throughput:     3.06MB/s
 ```
+To send a multipart form the way `curl -F` does, use `--form` (short `-F`). Use `name=value` for a plain field and `name=@path` to attach a file. bombardier builds the body and sets the `Content-Type` header with the generated boundary for you:
+```
+> bombardier -c 1 -n 1 -m POST -F "comment=hello" -F "file=@report.pdf" http://localhost:8080/upload
+```

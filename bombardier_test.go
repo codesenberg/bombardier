@@ -589,6 +589,85 @@ func TestBombardierFileDoesntExist(t *testing.T) {
 	}
 }
 
+func TestBombardierSendsMultipartForm(t *testing.T) {
+	testAllClients(t, testBombardierSendsMultipartForm)
+}
+
+func testBombardierSendsMultipartForm(clientType clientTyp, t *testing.T) {
+	response := []byte("OK")
+	fileContents, err := ioutil.ReadFile("testbody.txt")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	s := httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			if err := r.ParseMultipartForm(1 << 20); err != nil {
+				t.Errorf("Failed to parse multipart form: %v", err)
+				return
+			}
+			if got := r.FormValue("greeting"); got != "hello" {
+				t.Errorf("Expected field greeting=hello, but got %q", got)
+			}
+			f, fh, err := r.FormFile("attachment")
+			if err != nil {
+				t.Errorf("Expected an attachment file part: %v", err)
+				return
+			}
+			defer f.Close()
+			if fh.Filename != "testbody.txt" {
+				t.Errorf("Expected filename testbody.txt, but got %q", fh.Filename)
+			}
+			got, err := ioutil.ReadAll(f)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if string(got) != string(fileContents) {
+				t.Errorf("Expected file %q, but got %q", fileContents, got)
+			}
+			_, err = rw.Write(response)
+			if err != nil {
+				t.Error(err)
+			}
+		}),
+	)
+	defer s.Close()
+	one := uint64(1)
+	b, e := newBombardier(config{
+		numConns:   defaultNumberOfConns,
+		numReqs:    &one,
+		url:        ParseURLOrPanic(s.URL),
+		headers:    new(headersList),
+		timeout:    defaultTimeout,
+		method:     "POST",
+		formData:   []string{"greeting=hello", "attachment=@testbody.txt"},
+		clientType: clientType,
+		format:     knownFormat("plain-text"),
+	})
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	b.disableOutput()
+	b.bombard()
+}
+
+func TestBombardierFormFileDoesntExist(t *testing.T) {
+	_, e := newBombardier(config{
+		numConns: defaultNumberOfConns,
+		url:      ParseURLOrPanic("http://example.com"),
+		headers:  new(headersList),
+		timeout:  defaultTimeout,
+		method:   "POST",
+		formData: []string{"attachment=@/does/not/exist.forreal"},
+		format:   knownFormat("plain-text"),
+	})
+	if _, ok := e.(*os.PathError); !ok {
+		t.Errorf("Expected to get PathError, but got %v", e)
+	}
+}
+
 func TestBombardierStreamsBody(t *testing.T) {
 	testAllClients(t, testBombardierStreamsBody)
 }

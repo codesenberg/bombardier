@@ -97,6 +97,20 @@ func newBombardier(c config) (*bombardier, error) {
 		return nil, err
 	}
 
+	if len(c.formData) > 0 {
+		formBody, contentType, ferr := buildMultipartBody(c.formData)
+		if ferr != nil {
+			return nil, ferr
+		}
+		c.body = formBody
+		if !c.headers.contains("Content-Type") {
+			if c.headers == nil {
+				c.headers = new(headersList)
+			}
+			*c.headers = append(*c.headers, header{"Content-Type", contentType})
+		}
+	}
+
 	var (
 		pbody *string
 		bsp   bodyStreamProducer

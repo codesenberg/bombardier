@@ -51,7 +51,12 @@ var (
 		"no Path to TLS Client Certificate Private Key")
 	errZeroRate = errors.New(
 		"rate can't be less than 1")
-	errBodyProvidedTwice = errors.New("use either --body or --body-file")
+	errBodyProvidedTwice = errors.New(
+		"use only one of --body, --body-file or --form")
+
+	errInvalidFormField = errors.New(
+		"invalid form field, use name=value or name=@file")
+	errEmptyFormFieldName = errors.New("form field name can't be empty")
 
 	errInvalidHeaderFormat = errors.New("invalid header format")
 	errEmptyPrintSpec      = errors.New(
