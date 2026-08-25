@@ -19,6 +19,18 @@ func (h *headersList) IsCumulative() bool {
 	return true
 }
 
+func (h *headersList) contains(key string) bool {
+	if h == nil {
+		return false
+	}
+	for _, hdr := range *h {
+		if strings.EqualFold(hdr.key, key) {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *headersList) Set(value string) error {
 	res := strings.SplitN(value, ":", 2)
 	if len(res) != 2 {

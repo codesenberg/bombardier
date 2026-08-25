@@ -15,6 +15,7 @@ type config struct {
 	url                       *url.URL
 	method, certPath, keyPath string
 	body, bodyFilePath        string
+	formData                  []string
 	stream                    bool
 	headers                   *headersList
 	timeout                   time.Duration
@@ -122,10 +123,20 @@ func (c *config) checkHTTPParameters() error {
 	if !allowedHTTPMethod(c.method) {
 		return &invalidHTTPMethodError{method: c.method}
 	}
-	if !canHaveBody(c.method) && (c.body != "" || c.bodyFilePath != "") {
+	sources := 0
+	if c.body != "" {
+		sources++
+	}
+	if c.bodyFilePath != "" {
+		sources++
+	}
+	if len(c.formData) > 0 {
+		sources++
+	}
+	if !canHaveBody(c.method) && sources > 0 {
 		return errBodyNotAllowed
 	}
-	if c.body != "" && c.bodyFilePath != "" {
+	if sources > 1 {
 		return errBodyProvidedTwice
 	}
 	return nil

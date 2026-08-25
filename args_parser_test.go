@@ -800,7 +800,7 @@ func TestArgsParsingWithEmptyPrintSpec(t *testing.T) {
 	if err == nil {
 		t.Fail()
 	}
-	if c != emptyConf {
+	if !reflect.DeepEqual(c, emptyConf) {
 		t.Fail()
 	}
 }
@@ -817,7 +817,7 @@ func TestArgsParsingWithInvalidPrintSpec(t *testing.T) {
 	p := newKingpinParser()
 	for _, is := range invalidSpecs {
 		c, err := p.parse(is)
-		if err == nil || c != emptyConf {
+		if err == nil || !reflect.DeepEqual(c, emptyConf) {
 			t.Errorf("invalid print spec %q parsed correctly", is)
 		}
 	}

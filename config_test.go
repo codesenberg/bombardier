@@ -246,6 +246,35 @@ func TestCheckArgs(t *testing.T) {
 			},
 			errBodyProvidedTwice,
 		},
+		{
+			config{
+				numConns: defaultNumberOfConns,
+				numReqs:  &defaultNumberOfReqs,
+				duration: &defaultTestDuration,
+				url:      ParseURLOrPanic("http://localhost:8080"),
+				headers:  noHeaders,
+				timeout:  defaultTimeout,
+				method:   "POST",
+				body:     "abracadabra",
+				formData: []string{"field=value"},
+				format:   knownFormat("plain-text"),
+			},
+			errBodyProvidedTwice,
+		},
+		{
+			config{
+				numConns: defaultNumberOfConns,
+				numReqs:  &defaultNumberOfReqs,
+				duration: &defaultTestDuration,
+				url:      ParseURLOrPanic("http://localhost:8080"),
+				headers:  noHeaders,
+				timeout:  defaultTimeout,
+				method:   "HEAD",
+				formData: []string{"field=value"},
+				format:   knownFormat("plain-text"),
+			},
+			errBodyNotAllowed,
+		},
 	}
 	for _, e := range expectations {
 		if r := e.in.checkArgs(); r != e.out {
