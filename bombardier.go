@@ -440,6 +440,17 @@ func (b *bombardier) disableOutput() {
 	b.bar.NotPrint = true
 }
 
+func handleSignals(c <-chan os.Signal, cancel func(), exit func(int)) {
+	if _, ok := <-c; !ok {
+		return
+	}
+	cancel()
+	if _, ok := <-c; !ok {
+		return
+	}
+	exit(exitFailure)
+}
+
 func main() {
 	cfg, err := parser.parse(os.Args)
 	if err != nil {
@@ -451,12 +462,10 @@ func main() {
 		fmt.Println("Error initializing bombardier:", err)
 		os.Exit(exitFailure)
 	}
-	c := make(chan os.Signal, 1)
+	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt)
-	go func() {
-		<-c
-		bombardier.barrier.cancel()
-	}()
+	defer signal.Stop(c)
+	go handleSignals(c, bombardier.barrier.cancel, os.Exit)
 	bombardier.bombard()
 	if bombardier.conf.printResult {
 		bombardier.printStats()

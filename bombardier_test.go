@@ -727,3 +727,141 @@ func testBombardierShouldSendCustomHostHeader(
 	b.disableOutput()
 	b.bombard()
 }
+
+func TestHandleSignalsCancelOnFirstInterrupt(t *testing.T) {
+	c := make(chan os.Signal, 2)
+	cancelled := make(chan struct{}, 1)
+	exited := make(chan int, 1)
+
+	cancelFn := func() {
+		cancelled <- struct{}{}
+	}
+	exitFn := func(code int) {
+		exited <- code
+	}
+
+	done := make(chan struct{})
+	go func() {
+		handleSignals(c, cancelFn, exitFn)
+		close(done)
+	}()
+
+	c <- os.Interrupt
+
+	select {
+	case <-cancelled:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for cancel on first interrupt")
+	}
+
+	select {
+	case code := <-exited:
+		t.Fatalf("unexpected exit call on first interrupt: code %d", code)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(c)
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for handleSignals to return after channel close")
+	}
+
+	select {
+	case code := <-exited:
+		t.Fatalf("unexpected exit call after channel close: code %d", code)
+	default:
+	}
+}
+
+func TestHandleSignalsExitOnSecondInterrupt(t *testing.T) {
+	c := make(chan os.Signal, 2)
+	cancelled := make(chan struct{}, 1)
+	exited := make(chan int, 1)
+
+	cancelFn := func() {
+		cancelled <- struct{}{}
+	}
+	exitFn := func(code int) {
+		exited <- code
+	}
+
+	go handleSignals(c, cancelFn, exitFn)
+
+	c <- os.Interrupt
+
+	select {
+	case <-cancelled:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for cancel on first interrupt")
+	}
+
+	c <- os.Interrupt
+
+	select {
+	case code := <-exited:
+		if code != exitFailure {
+			t.Fatalf("expected exit code %d, got %d", exitFailure, code)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for exit on second interrupt")
+	}
+}
+
+func TestHandleSignalsClosedChannel(t *testing.T) {
+	c := make(chan os.Signal, 2)
+	cancelled := make(chan struct{}, 1)
+	exited := make(chan int, 1)
+
+	close(c)
+
+	done := make(chan struct{})
+	go func() {
+		handleSignals(c, func() { cancelled <- struct{}{} }, func(code int) { exited <- code })
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for handleSignals to return on closed channel")
+	}
+
+	select {
+	case <-cancelled:
+		t.Fatal("cancel called on closed channel")
+	default:
+	}
+
+	select {
+	case <-exited:
+		t.Fatal("exit called on closed channel")
+	default:
+	}
+}
+
+func TestHandleSignalsRapidInterrupts(t *testing.T) {
+	c := make(chan os.Signal, 2)
+	cancelled := make(chan struct{}, 1)
+	exited := make(chan int, 1)
+
+	c <- os.Interrupt
+	c <- os.Interrupt
+
+	go handleSignals(c, func() { cancelled <- struct{}{} }, func(code int) { exited <- code })
+
+	select {
+	case <-cancelled:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for cancel on rapid interrupts")
+	}
+
+	select {
+	case code := <-exited:
+		if code != exitFailure {
+			t.Fatalf("expected exit code %d, got %d", exitFailure, code)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for exit on rapid interrupts")
+	}
+}
