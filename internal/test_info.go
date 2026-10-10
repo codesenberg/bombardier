@@ -35,8 +35,9 @@ type Spec struct {
 	Body         string
 	BodyFilePath string
 
-	CertPath string
-	KeyPath  string
+	CertPath   string
+	KeyPath    string
+	UnixSocket string
 
 	Stream     bool
 	Timeout    time.Duration

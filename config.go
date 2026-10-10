@@ -13,6 +13,7 @@ type config struct {
 	disableKeepAlives         bool
 	duration                  *time.Duration
 	url                       *url.URL
+	unixSocket                string
 	method, certPath, keyPath string
 	body, bodyFilePath        string
 	stream                    bool

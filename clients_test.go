@@ -3,10 +3,15 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/goware/urlx"
 )
@@ -168,6 +173,75 @@ func TestHTTP1Clients(t *testing.T) {
 		}
 		if bytesWritten == 0 {
 			t.Errorf("empty request of size: %v", bytesWritten)
+		}
+	}
+}
+
+func TestUnixSocketClients(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "bombardier-unix-client-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	sockPath := filepath.Join(tempDir, "test.sock")
+	listener, err := net.Listen("unix", sockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	response := []byte("hello from unix socket")
+	server := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(response)
+		}),
+	}
+	go func() {
+		_ = server.Serve(listener)
+	}()
+	defer server.Close()
+
+	requestURL, err := urlx.Parse("http://localhost/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, useHTTP2 := range []bool{false, true} {
+		bytesRead, bytesWritten := int64(0), int64(0)
+		cc := &clientOpts{
+			HTTP2:        useHTTP2,
+			headers:      new(headersList),
+			requestURL:   requestURL,
+			method:       "GET",
+			body:         new(string),
+			bytesRead:    &bytesRead,
+			bytesWritten: &bytesWritten,
+			unixSocket:   sockPath,
+			timeout:      2 * time.Second,
+		}
+
+		clients := []client{
+			newHTTPClient(cc),
+			newFastHTTPClient(cc),
+		}
+
+		for _, c := range clients {
+			bytesRead, bytesWritten = 0, 0
+			code, _, err := c.do()
+			if err != nil {
+				t.Fatalf("client.do() error: %v (HTTP2: %v)", err, useHTTP2)
+			}
+			if code != http.StatusOK {
+				t.Errorf("expected 200 OK, got %v", code)
+			}
+			if atomic.LoadInt64(&bytesRead) == 0 {
+				t.Errorf("expected bytesRead > 0")
+			}
+			if atomic.LoadInt64(&bytesWritten) == 0 {
+				t.Errorf("expected bytesWritten > 0")
+			}
 		}
 	}
 }

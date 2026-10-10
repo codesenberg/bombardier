@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"runtime"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ type kingpinParser struct {
 	stream            bool
 	certPath          string
 	keyPath           string
+	unixSocket        string
 	rate              *nullableUint64
 	clientType        clientTyp
 
@@ -57,6 +59,7 @@ func newKingpinParser() argsParser {
 		stream:       false,
 		certPath:     "",
 		keyPath:      "",
+		unixSocket:   "",
 		insecure:     false,
 		url:          "",
 		rate:         new(nullableUint64),
@@ -102,6 +105,9 @@ func newKingpinParser() argsParser {
 	app.Flag("key", "Path to the client's TLS Certificate Private Key").
 		Default("").
 		StringVar(&kparser.keyPath)
+	app.Flag("unix-socket", "Path to Unix domain socket").
+		Default("").
+		StringVar(&kparser.unixSocket)
 	app.Flag("insecure",
 		"Controls whether a client verifies the server's certificate"+
 			" chain and host name").
@@ -206,15 +212,49 @@ func (k *kingpinParser) parse(args []string) (config, error) {
 			"unknown format or invalid format spec %q", k.formatSpec,
 		)
 	}
-	url, err := urlx.Parse(k.url)
-	if err != nil {
-		return emptyConf, err
+	var parsedURL *url.URL
+	unixSocket := k.unixSocket
+	if strings.HasPrefix(k.url, "unix://") {
+		rawPath := strings.TrimPrefix(k.url, "unix://")
+		var httpPath string
+		if idx := strings.Index(rawPath, ":"); idx != -1 {
+			if unixSocket == "" {
+				unixSocket = rawPath[:idx]
+			}
+			httpPath = rawPath[idx+1:]
+		} else {
+			if unixSocket == "" {
+				unixSocket = rawPath
+			}
+		}
+		if !strings.HasPrefix(httpPath, "/") {
+			httpPath = "/" + httpPath
+		}
+		parsedURL, err = urlx.Parse("http://localhost" + httpPath)
+		if err != nil {
+			return emptyConf, err
+		}
+	} else if unixSocket != "" && (k.url == "" || strings.HasPrefix(k.url, "/")) {
+		httpPath := k.url
+		if !strings.HasPrefix(httpPath, "/") {
+			httpPath = "/" + httpPath
+		}
+		parsedURL, err = urlx.Parse("http://localhost" + httpPath)
+		if err != nil {
+			return emptyConf, err
+		}
+	} else {
+		parsedURL, err = urlx.Parse(k.url)
+		if err != nil {
+			return emptyConf, err
+		}
 	}
 	return config{
 		numConns:          k.numConns,
 		numReqs:           k.numReqs.val,
 		duration:          k.duration.val,
-		url:               url,
+		url:               parsedURL,
+		unixSocket:        unixSocket,
 		headers:           k.headers,
 		timeout:           k.timeout,
 		method:            k.method,

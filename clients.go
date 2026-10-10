@@ -34,6 +34,7 @@ type clientOpts struct {
 	bodProd bodyStreamProducer
 
 	bytesRead, bytesWritten *int64
+	unixSocket              string
 }
 
 type fasthttpClient struct {
@@ -66,7 +67,7 @@ func newFastHTTPClient(opts *clientOpts) client {
 		TLSConfig:                     opts.tlsConfig,
 		Dial: fasthttpDialFunc(
 			opts.bytesRead, opts.bytesWritten,
-			opts.timeout,
+			opts.timeout, opts.unixSocket,
 		),
 	}
 	c.headers = headersToFastHTTPHeaders(opts.headers)
@@ -132,7 +133,7 @@ func newHTTPClient(opts *clientOpts) client {
 		MaxIdleConnsPerHost: int(opts.maxConns),
 		DisableKeepAlives:   opts.disableKeepAlives,
 		ForceAttemptHTTP2:   opts.HTTP2,
-		DialContext:         httpDialContextFunc(opts.bytesRead, opts.bytesWritten, opts.timeout),
+		DialContext:         httpDialContextFunc(opts.bytesRead, opts.bytesWritten, opts.timeout, opts.unixSocket),
 	}
 
 	cl := &http.Client{

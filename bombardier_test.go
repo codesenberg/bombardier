@@ -7,9 +7,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -726,4 +728,59 @@ func testBombardierShouldSendCustomHostHeader(
 	}
 	b.disableOutput()
 	b.bombard()
+}
+
+func TestBombardierUnixSocket(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "bombardier-unix-bombard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	sockPath := filepath.Join(tempDir, "test.sock")
+	listener, err := net.Listen("unix", sockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	reqsReceived := uint64(0)
+	server := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			atomic.AddUint64(&reqsReceived, 1)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		}),
+	}
+	go func() {
+		_ = server.Serve(listener)
+	}()
+	defer server.Close()
+
+	for _, clientType := range []clientTyp{fhttp, nhttp1, nhttp2} {
+		t.Run(clientType.String(), func(t *testing.T) {
+			atomic.StoreUint64(&reqsReceived, 0)
+			numReqs := uint64(20)
+			b, err := newBombardier(config{
+				numConns:   defaultNumberOfConns,
+				numReqs:    &numReqs,
+				url:        ParseURLOrPanic("http://localhost/"),
+				unixSocket: sockPath,
+				headers:    new(headersList),
+				timeout:    defaultTimeout,
+				method:     "GET",
+				body:       "",
+				clientType: clientType,
+				format:     knownFormat("plain-text"),
+			})
+			if err != nil {
+				t.Fatalf("newBombardier error: %v", err)
+			}
+			b.disableOutput()
+			b.bombard()
+			if atomic.LoadUint64(&reqsReceived) != numReqs {
+				t.Errorf("expected %d requests, got %d", numReqs, atomic.LoadUint64(&reqsReceived))
+			}
+		})
+	}
 }
