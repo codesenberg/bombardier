@@ -398,6 +398,24 @@ func TestClientTypToStringConversion(t *testing.T) {
 	}
 }
 
+func TestCheckArgsUnixSocket(t *testing.T) {
+	c := config{
+		numConns:   defaultNumberOfConns,
+		numReqs:    &defaultNumberOfReqs,
+		duration:   &defaultTestDuration,
+		url:        ParseURLOrPanic("http://localhost"),
+		unixSocket: "/var/run/test.sock",
+		headers:    nil,
+		timeout:    defaultTimeout,
+		method:     "GET",
+		body:       "",
+		format:     knownFormat("plain-text"),
+	}
+	if err := c.checkArgs(); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
 func clientTypeFromString(s string) clientTyp {
 	switch s {
 	case "fasthttp":

@@ -98,6 +98,9 @@ const (
 {{- if .KeyPath -}}
 ,"keyPath":{{ .KeyPath | printf "%q" }}
 {{- end -}}
+{{- if .UnixSocket -}}
+,"unixSocket":{{ .UnixSocket | printf "%q" }}
+{{- end -}}
 
 ,"stream":{{ .Stream }},"timeoutSeconds":{{ .Timeout.Seconds }}
 

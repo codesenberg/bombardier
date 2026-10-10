@@ -140,6 +140,7 @@ func newBombardier(c config) (*bombardier, error) {
 		bodProd:      bsp,
 		bytesRead:    &b.bytesRead,
 		bytesWritten: &b.bytesWritten,
+		unixSocket:   c.unixSocket,
 	}
 	b.client = makeHTTPClient(c.clientType, cc)
 
@@ -346,13 +347,17 @@ func (b *bombardier) bombard() {
 }
 
 func (b *bombardier) printIntro() {
+	target := b.conf.url.String()
+	if b.conf.unixSocket != "" {
+		target = fmt.Sprintf("%v (via %v)", b.conf.url, b.conf.unixSocket)
+	}
 	if b.conf.testType() == counted {
 		fmt.Fprintf(b.out,
 			"Bombarding %v with %v request(s) using %v connection(s)\n",
-			b.conf.url, *b.conf.numReqs, b.conf.numConns)
+			target, *b.conf.numReqs, b.conf.numConns)
 	} else if b.conf.testType() == timed {
 		fmt.Fprintf(b.out, "Bombarding %v for %v using %v connection(s)\n",
-			b.conf.url, *b.conf.duration, b.conf.numConns)
+			target, *b.conf.duration, b.conf.numConns)
 	}
 }
 
@@ -367,8 +372,9 @@ func (b *bombardier) gatherInfo() internal.TestInfo {
 			Body:         b.conf.body,
 			BodyFilePath: b.conf.bodyFilePath,
 
-			CertPath: b.conf.certPath,
-			KeyPath:  b.conf.keyPath,
+			CertPath:   b.conf.certPath,
+			KeyPath:    b.conf.keyPath,
+			UnixSocket: b.conf.unixSocket,
 
 			Stream:     b.conf.stream,
 			Timeout:    b.conf.timeout,

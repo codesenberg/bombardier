@@ -35,9 +35,18 @@ func (cc *countingConn) Write(b []byte) (n int, err error) {
 var fasthttpDialFunc = func(
 	bytesRead, bytesWritten *int64,
 	dialTimeout time.Duration,
+	unixSocket string,
 ) func(string) (net.Conn, error) {
 	return func(address string) (net.Conn, error) {
-		conn, err := net.DialTimeout("tcp", address, dialTimeout)
+		var (
+			conn net.Conn
+			err  error
+		)
+		if unixSocket != "" {
+			conn, err = net.DialTimeout("unix", unixSocket, dialTimeout)
+		} else {
+			conn, err = net.DialTimeout("tcp", address, dialTimeout)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -55,9 +64,14 @@ var fasthttpDialFunc = func(
 var httpDialContextFunc = func(
 	bytesRead, bytesWritten *int64,
 	dialTimeout time.Duration,
+	unixSocket string,
 ) func(context.Context, string, string) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: dialTimeout}
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		if unixSocket != "" {
+			network = "unix"
+			address = unixSocket
+		}
 		conn, err := dialer.DialContext(ctx, network, address)
 		if err != nil {
 			return nil, err

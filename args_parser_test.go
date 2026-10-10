@@ -834,3 +834,71 @@ func TestEmbeddedURLParsing(t *testing.T) {
 		t.Errorf("got %q, wanted %q", c.url, url)
 	}
 }
+
+func TestUnixSocketArgsParsing(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantSocket string
+		wantURL    string
+	}{
+		{
+			name:       "flag with http url",
+			args:       []string{programName, "--unix-socket", "/var/run/test.sock", "http://localhost/test"},
+			wantSocket: "/var/run/test.sock",
+			wantURL:    "http://localhost/test",
+		},
+		{
+			name:       "flag with relative path",
+			args:       []string{programName, "--unix-socket", "/tmp/app.sock", "/api/v1"},
+			wantSocket: "/tmp/app.sock",
+			wantURL:    "http://localhost/api/v1",
+		},
+		{
+			name:       "unix scheme url without path",
+			args:       []string{programName, "unix:///var/run/daemon.sock"},
+			wantSocket: "/var/run/daemon.sock",
+			wantURL:    "http://localhost/",
+		},
+		{
+			name:       "unix scheme url with path",
+			args:       []string{programName, "unix:///var/run/daemon.sock:/status"},
+			wantSocket: "/var/run/daemon.sock",
+			wantURL:    "http://localhost/status",
+		},
+		{
+			name:       "unix scheme url with path without leading slash",
+			args:       []string{programName, "unix:///var/run/daemon.sock:status"},
+			wantSocket: "/var/run/daemon.sock",
+			wantURL:    "http://localhost/status",
+		},
+		{
+			name:       "flag with empty string as url",
+			args:       []string{programName, "--unix-socket", "/tmp/app.sock", ""},
+			wantSocket: "/tmp/app.sock",
+			wantURL:    "http://localhost/",
+		},
+		{
+			name:       "flag with unix scheme url overriding url socket",
+			args:       []string{programName, "--unix-socket", "/custom.sock", "unix:///var/run/daemon.sock:/status"},
+			wantSocket: "/custom.sock",
+			wantURL:    "http://localhost/status",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newKingpinParser()
+			cfg, err := p.parse(tt.args)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if cfg.unixSocket != tt.wantSocket {
+				t.Errorf("got unixSocket %q, want %q", cfg.unixSocket, tt.wantSocket)
+			}
+			if cfg.url.String() != tt.wantURL {
+				t.Errorf("got url %q, want %q", cfg.url.String(), tt.wantURL)
+			}
+		})
+	}
+}
