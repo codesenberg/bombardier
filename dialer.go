@@ -15,7 +15,7 @@ type countingConn struct {
 func (cc *countingConn) Read(b []byte) (n int, err error) {
 	n, err = cc.Conn.Read(b)
 
-	if err == nil {
+	if n > 0 && cc.bytesRead != nil {
 		atomic.AddInt64(cc.bytesRead, int64(n))
 	}
 
@@ -25,7 +25,7 @@ func (cc *countingConn) Read(b []byte) (n int, err error) {
 func (cc *countingConn) Write(b []byte) (n int, err error) {
 	n, err = cc.Conn.Write(b)
 
-	if err == nil {
+	if n > 0 && cc.bytesWritten != nil {
 		atomic.AddInt64(cc.bytesWritten, int64(n))
 	}
 

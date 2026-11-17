@@ -57,6 +57,12 @@ func (b *bucketlimiter) pace(done <-chan struct{}) (res token) {
 		res = cont
 	case <-done:
 		res = brk
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
 	}
 	b.timerPool.Put(timer)
 	return

@@ -19,6 +19,9 @@ func newErrorMap() *errorMap {
 }
 
 func (e *errorMap) add(err error) {
+	if err == nil {
+		return
+	}
 	s := err.Error()
 	e.mu.RLock()
 	c, ok := e.m[s]
@@ -36,6 +39,9 @@ func (e *errorMap) add(err error) {
 }
 
 func (e *errorMap) get(err error) uint64 {
+	if err == nil {
+		return uint64(0)
+	}
 	s := err.Error()
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -43,7 +49,7 @@ func (e *errorMap) get(err error) uint64 {
 	if c == nil {
 		return uint64(0)
 	}
-	return *c
+	return atomic.LoadUint64(c)
 }
 
 func (e *errorMap) sum() uint64 {
@@ -51,7 +57,7 @@ func (e *errorMap) sum() uint64 {
 	defer e.mu.RUnlock()
 	sum := uint64(0)
 	for _, v := range e.m {
-		sum += *v
+		sum += atomic.LoadUint64(v)
 	}
 	return sum
 }
@@ -84,7 +90,7 @@ func (e *errorMap) byFrequency() errorsByFrequency {
 	e.mu.RLock()
 	byFreq := make(errorsByFrequency, 0, len(e.m))
 	for err, count := range e.m {
-		byFreq = append(byFreq, &errorWithCount{err, *count})
+		byFreq = append(byFreq, &errorWithCount{err, atomic.LoadUint64(count)})
 	}
 	e.mu.RUnlock()
 	sort.Sort(byFreq)

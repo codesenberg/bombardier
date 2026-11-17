@@ -320,7 +320,11 @@ func (b *bombardier) recordRps() {
 	b.start = time.Now()
 	b.rpl.Unlock()
 
-	reqsf := float64(reqs) / duration.Seconds()
+	secs := duration.Seconds()
+	if secs <= 0 {
+		return
+	}
+	reqsf := float64(reqs) / secs
 	b.requests.Increment(reqsf)
 }
 
@@ -377,16 +381,16 @@ func (b *bombardier) gatherInfo() internal.TestInfo {
 			Rate: b.conf.rate,
 		},
 		Result: internal.Results{
-			BytesRead:    b.bytesRead,
-			BytesWritten: b.bytesWritten,
+			BytesRead:    atomic.LoadInt64(&b.bytesRead),
+			BytesWritten: atomic.LoadInt64(&b.bytesWritten),
 			TimeTaken:    b.timeTaken,
 
-			Req1XX: b.req1xx,
-			Req2XX: b.req2xx,
-			Req3XX: b.req3xx,
-			Req4XX: b.req4xx,
-			Req5XX: b.req5xx,
-			Others: b.others,
+			Req1XX: atomic.LoadUint64(&b.req1xx),
+			Req2XX: atomic.LoadUint64(&b.req2xx),
+			Req3XX: atomic.LoadUint64(&b.req3xx),
+			Req4XX: atomic.LoadUint64(&b.req4xx),
+			Req5XX: atomic.LoadUint64(&b.req5xx),
+			Others: atomic.LoadUint64(&b.others),
 
 			Latencies: b.latencies,
 			Requests:  b.requests,

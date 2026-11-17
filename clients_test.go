@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -170,4 +171,83 @@ func TestHTTP1Clients(t *testing.T) {
 			t.Errorf("empty request of size: %v", bytesWritten)
 		}
 	}
+}
+
+func TestClientWithNilBodyAndNilBodProd(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer ts.Close()
+
+	u, err := urlx.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var bytesRead, bytesWritten int64
+	cc := &clientOpts{
+		headers:      new(headersList),
+		requestURL:   u,
+		method:       "GET",
+		body:         nil,
+		bodProd:      nil,
+		bytesRead:    &bytesRead,
+		bytesWritten: &bytesWritten,
+	}
+
+	for _, c := range []client{newHTTPClient(cc), newFastHTTPClient(cc)} {
+		code, _, err := c.do()
+		if err != nil {
+			t.Errorf("unexpected error with nil body: %v", err)
+		}
+		if code != http.StatusOK {
+			t.Errorf("expected 200, got %d", code)
+		}
+	}
+}
+
+func TestConcurrentHTTPClientDo(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("response"))
+	}))
+	defer ts.Close()
+
+	u, err := urlx.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hl := new(headersList)
+	_ = hl.Set("User-Agent: test-agent")
+	_ = hl.Set("Accept: */*")
+
+	var bytesRead, bytesWritten int64
+	cc := &clientOpts{
+		headers:      hl,
+		requestURL:   u,
+		method:       "GET",
+		bytesRead:    &bytesRead,
+		bytesWritten: &bytesWritten,
+	}
+
+	c := newHTTPClient(cc)
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 5; j++ {
+				code, _, err := c.do()
+				if err != nil {
+					t.Errorf("concurrent do error: %v", err)
+				}
+				if code != http.StatusOK {
+					t.Errorf("expected 200, got %d", code)
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }

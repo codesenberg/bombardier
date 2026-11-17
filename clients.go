@@ -89,7 +89,7 @@ func (c *fasthttpClient) do() (
 	req.UseHostHeader = true
 	if c.body != nil {
 		req.SetBodyString(*c.body)
-	} else {
+	} else if c.bodProd != nil {
 		bs, bserr := c.bodProd()
 		if bserr != nil {
 			return 0, 0, bserr
@@ -156,7 +156,11 @@ func (c *httpClient) do() (
 ) {
 	req := &http.Request{}
 
-	req.Header = c.headers
+	if c.headers != nil {
+		req.Header = c.headers.Clone()
+	} else {
+		req.Header = make(http.Header)
+	}
 	req.Method = c.method
 	req.URL = c.url
 
@@ -168,7 +172,7 @@ func (c *httpClient) do() (
 		br := strings.NewReader(*c.body)
 		req.ContentLength = int64(len(*c.body))
 		req.Body = ioutil.NopCloser(br)
-	} else {
+	} else if c.bodProd != nil {
 		bs, bserr := c.bodProd()
 		if bserr != nil {
 			return 0, 0, bserr
