@@ -118,3 +118,17 @@ func TestTimeBarrierPanicOnBadDuration(t *testing.T) {
 func approximatelyEqual(expected, actual, err time.Duration) bool {
 	return expected-err < actual && actual < expected+err
 }
+
+func TestCountingCompletionBarrierZeroReqs(t *testing.T) {
+	b := newCountingCompletionBarrier(0)
+	if c := b.completed(); c != 1.0 {
+		t.Errorf("expected 1.0 for 0 numReqs, got %f", c)
+	}
+}
+
+func TestTimedCompletionBarrierZeroDuration(t *testing.T) {
+	b := newTimedCompletionBarrier(0)
+	if c := b.completed(); c != 1.0 {
+		t.Errorf("expected 1.0 for 0 duration, got %f", c)
+	}
+}

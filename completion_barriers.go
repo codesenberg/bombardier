@@ -61,6 +61,9 @@ func (c *countingCompletionBarrier) completed() float64 {
 	case <-c.doneChan:
 		return 1.0
 	default:
+		if c.numReqs == 0 {
+			return 1.0
+		}
 		reqsDone := atomic.LoadUint64(&c.reqsDone)
 		return float64(reqsDone) / float64(c.numReqs)
 	}
@@ -118,7 +121,14 @@ func (c *timedCompletionBarrier) completed() float64 {
 	case <-c.doneChan:
 		return 1.0
 	default:
-		return float64(time.Since(c.start).Nanoseconds()) /
+		if c.duration <= 0 {
+			return 1.0
+		}
+		ratio := float64(time.Since(c.start).Nanoseconds()) /
 			float64(c.duration.Nanoseconds())
+		if ratio > 1.0 {
+			return 1.0
+		}
+		return ratio
 	}
 }

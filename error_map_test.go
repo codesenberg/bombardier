@@ -56,6 +56,17 @@ func TestErrorWithCountToStringConversion(t *testing.T) {
 	}
 }
 
+func TestErrorMapNil(t *testing.T) {
+	m := newErrorMap()
+	m.add(nil)
+	if c := m.get(nil); c != 0 {
+		t.Errorf("expected 0 for nil error, got %d", c)
+	}
+	if s := m.sum(); s != 0 {
+		t.Errorf("expected sum 0, got %d", s)
+	}
+}
+
 func BenchmarkErrorMapAdd(b *testing.B) {
 	m := newErrorMap()
 	err := errors.New("benchmark")
